@@ -1,0 +1,22 @@
+ICON PLACEHOLDER
+================
+
+Please replace this file with a 1024x1024 PNG icon file named "icon.png"
+
+You can create a simple icon using:
+1. Online tools like Canva, Figma, or GIMP
+2. Design software like Adobe Photoshop or Illustrator
+3. Icon generators like https://www.flaticon.com/
+
+The icon should be:
+- 1024x1024 pixels
+- PNG format
+- Square design
+- High contrast for visibility
+- Represents your app (shopping/ecommerce theme)
+
+Once you have the icon.png file in this directory, run:
+flutter pub run flutter_launcher_icons:main
+
+Or use the provided PowerShell script:
+.\generate_icon.ps1 
