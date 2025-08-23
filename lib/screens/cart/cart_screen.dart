@@ -80,7 +80,7 @@ class _CartScreenState extends State<CartScreen> {
 
       await CartService.updateQuantity(productId, newQuantity);
       await _loadCart(); // Refresh cart after update
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -119,7 +119,7 @@ class _CartScreenState extends State<CartScreen> {
       });
 
       await CartService.removeFromCart(productId);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -136,7 +136,7 @@ class _CartScreenState extends State<CartScreen> {
           ),
         );
       }
-      
+
       await _loadCart(); // Refresh cart after removal
     } catch (e) {
       if (mounted) {
@@ -173,7 +173,7 @@ class _CartScreenState extends State<CartScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              
+
               setState(() {
                 _isProcessing = true;
               });
@@ -181,7 +181,7 @@ class _CartScreenState extends State<CartScreen> {
               try {
                 await CartService.clearCart();
                 await _loadCart();
-                
+
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -239,45 +239,66 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: Header(
-        cartItemCount: _cartItemCount,
-        currentUser: _currentUser,
-        onCartTap: () {}, // Already in cart
-        onProfileTap: () => Navigator.pushNamed(context, '/profile'),
-        onLogout: () async {
-          await AuthService.logout();
-          if (mounted) {
-            Navigator.pushReplacementNamed(context, '/login');
-          }
-        },
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Colors.grey.shade50,
+  appBar: AppBar(
+  backgroundColor: Colors.white,
+  elevation: 1,
+  leading: IconButton(
+    icon: const Icon(Icons.arrow_back, color: Colors.black),
+    onPressed: () => Navigator.pop(context),
+  ),
+  title: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: const [
+      Text(
+        "My Cart",
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+          fontSize: 18,
+        ),
       ),
-      body: isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    color: Colors.green.shade700,
+      SizedBox(height: 2),
+      Text(
+        "Tazaj Fruit & Vegetables",
+        style: TextStyle(
+          color: Colors.grey,
+          fontSize: 12, // small grey text
+        ),
+      ),
+    ],
+  ),
+),
+
+    body: isLoading
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  color: Colors.green.shade700,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Loading your cart...',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 16,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Loading your cart...',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : _buildCartContent(),
-      bottomNavigationBar: _buildCheckoutBar(),
-    );
-  }
+                ),
+              ],
+            ),
+          )
+        : _buildCartContent(),
+    bottomNavigationBar: _buildCheckoutBar(),
+  );
+}
+
+  // --- rest of your code (_buildCartContent, _buildCartItem, _buildCheckoutBar) remains unchanged ---
 
   Widget _buildCartContent() {
     if (cartItems.isEmpty) {
