@@ -186,7 +186,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                   Row(
                     children: [
                       Text(
-                        '₹${product['price']?.toString() ?? '0'}',
+                        'BHD${product['price']?.toString() ?? '0'}',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -370,7 +370,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                             ),
                           ),
                           Text(
-                            '₹${(double.tryParse(product['price']?.toString() ?? '0') ?? 0) * _quantity}',
+                            'BHD${(double.tryParse(product['price']?.toString() ?? '0') ?? 0) * _quantity}',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,

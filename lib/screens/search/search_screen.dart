@@ -104,7 +104,7 @@ void didChangeDependencies() {
     });
     try {
       final response = await http.get(
-        Uri.parse('https://backend-ecommerce-app-co1r.onrender.com/api/items'),
+        Uri.parse('https://backend-ecommerce-app-co1r.onrender.com/api/admin-items'),
         headers: {'Content-Type': 'application/json'},
       );
       if (response.statusCode == 200) {

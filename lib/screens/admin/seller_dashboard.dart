@@ -309,7 +309,7 @@ class _SellerDashboardState extends State<SellerDashboard> with TickerProviderSt
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            '₹${item['price']}/${item['unit']}',
+                            'BHD${item['price']}/${item['unit']}',
                             style: const TextStyle(
                               color: AppConstants.primaryColor,
                               fontWeight: FontWeight.w600,
@@ -1137,7 +1137,7 @@ class _SellerDashboardState extends State<SellerDashboard> with TickerProviderSt
                           children: [
                             Expanded(
                               child: Text(
-                                '₹${item['price']}',
+                                'BHD${item['price']}',
                                 style: TextStyle(
                                   color: AppConstants.primaryColor,
                                   fontWeight: FontWeight.w700,
@@ -1318,7 +1318,7 @@ class _SellerDashboardState extends State<SellerDashboard> with TickerProviderSt
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '₹${item['price']}',
+                      'BHD${item['price']}',
                       style: TextStyle(
                         color: AppConstants.primaryColor,
                         fontWeight: FontWeight.w700,

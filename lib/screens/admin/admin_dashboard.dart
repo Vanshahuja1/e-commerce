@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -9,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/admin_service.dart';
 import 'order_invoice_generator.dart';
+import '../../items/items.dart'; // Import for GroceryItems
 
 // ----------- MODELS -----------
 
@@ -192,19 +192,18 @@ class AdminDashboard extends StatefulWidget {
   State<AdminDashboard> createState() => _AdminDashboardState();
 }
 
-class _AdminDashboardState extends State<AdminDashboard>
-    with TickerProviderStateMixin {
+class _AdminDashboardState extends State<AdminDashboard> with TickerProviderStateMixin {
   // API BASE URL
   static const String _baseUrl =
       "https://backend-ecommerce-app-co1r.onrender.com/api";
 
   // Dashboard stats
   int _totalUsers = 0;
-int _totalProducts = 0;
-int _availableProducts = 0;
-int _hiddenProducts = 0;
+ int _totalProducts = 0;
+ int _availableProducts = 0;
+ int _hiddenProducts = 0;
 // Add this:
-int _totalOrders = 0;
+ int _totalOrders = 0;
   // Seller Requests
   
 
@@ -240,6 +239,9 @@ int _totalOrders = 0;
   String? _selectedPredefinedItem;
   bool _isEditProductMode = false;
   String? _editingProductId;
+  
+  // Image selection state
+  bool _showImageSelector = false;
 
   // UI State
   bool _isLoading = true;
@@ -363,19 +365,32 @@ Future<void> _fetchStats() async {
         'Content-Type': 'application/json',
       },
     );
-    print('Invoice generation status: ${res.statusCode}');
-print('Invoice generation response: ${res.body}');
+    print('Stats API status: ${res.statusCode}');
+    print('Stats API response: ${res.body}');
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
       setState(() {
-        _totalUsers = data['totalUsers'] ?? _totalUsers;
-        _totalProducts = data['totalProducts'] ?? _totalProducts;
-        _totalOrders = data['totalOrders'] ?? _totalOrders;
-        // Add/parse more stats if you want
+        _totalUsers = data['stats']?['totalUsers'] ?? _totalUsers;
+        _totalProducts = data['stats']?['totalProducts'] ?? _totalProducts;
+        _totalOrders = data['stats']?['totalOrders'] ?? _totalOrders;
+        // If stats API doesn't return product counts, calculate from products list
+        if (_totalProducts == 0 && _products.isNotEmpty) {
+          _totalProducts = _products.length;
+          _availableProducts = _products.where((p) => p.isAvailable).length;
+          _hiddenProducts = _products.where((p) => !p.isAvailable).length;
+        }
       });
     }
   } catch (e) {
     print('Failed to fetch stats: $e');
+    // If stats API fails, calculate from products list
+    if (_products.isNotEmpty) {
+      setState(() {
+        _totalProducts = _products.length;
+        _availableProducts = _products.where((p) => p.isAvailable).length;
+        _hiddenProducts = _products.where((p) => !p.isAvailable).length;
+      });
+    }
   }
 }
      
@@ -388,19 +403,19 @@ print('Invoice generation response: ${res.body}');
     }
 
     try {
-      print('Fetching products from API...');
+      print('Fetching products from admin API...');
 
-      // Use the correct endpoint from your API documentation
+      // Use the admin-specific endpoint
       final res = await http.get(
-        Uri.parse('$_baseUrl/items?limit=1000'),
+        Uri.parse('$_baseUrl/admin/items?limit=1000'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
       );
 
-      print('Products API Response Status: ${res.statusCode}');
-      print('Products API Response Body: ${res.body}');
+      print('Admin Products API Response Status: ${res.statusCode}');
+      print('Admin Products API Response Body: ${res.body}');
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -655,75 +670,45 @@ print('Invoice generation response: ${res.body}');
   }
 
  
-  // FIXED: Use correct API endpoint for toggling product availability
-  Future<void> _toggleProductAvailability(
-      String productId, bool isAvailable) async {
-    final token = await _getToken();
-    if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Authentication token not found')),
-      );
-      return;
-    }
-
+  // Toggle product availability
+  Future<void> _toggleProductAvailability(Product product) async {
     try {
-      print(
-          'Toggling product $productId to ${isAvailable ? 'available' : 'unavailable'}');
+      final token = await _getToken();
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Authentication token not found')),
+        );
+        return;
+      }
 
-      // Use the correct endpoint from your backend API
       final res = await http.patch(
-        Uri.parse('$_baseUrl/admin/items/$productId/status'),
+        Uri.parse('$_baseUrl/admin/items/${product.id}/status'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({'isAvailable': isAvailable}),
+        body: jsonEncode({'isAvailable': !product.isAvailable}),
       );
 
-      print('Toggle response status: ${res.statusCode}');
-      print('Toggle response body: ${res.body}');
+      final data = jsonDecode(res.body);
 
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        if (data['success'] == true) {
-          // Update the product in the local list immediately
-          setState(() {
-            final productIndex = _products.indexWhere((p) => p.id == productId);
-            if (productIndex != -1) {
-              _products[productIndex] =
-                  _products[productIndex].copyWith(isAvailable: isAvailable);
-
-              // Recalculate stats
-              _availableProducts = _products.where((p) => p.isAvailable).length;
-              _hiddenProducts = _products.where((p) => !p.isAvailable).length;
-
-              // Reapply filters
-              _filterProducts();
-            }
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  data['message'] ?? 'Product status updated successfully'),
-              backgroundColor: isAvailable ? Colors.green : Colors.orange,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        } else {
-          throw Exception(data['message'] ?? 'Failed to update product status');
-        }
+      if (res.statusCode == 200 && data['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Product ${!product.isAvailable ? 'activated' : 'hidden'} successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await _fetchProducts(); // Refresh products list
       } else {
-        throw Exception(
-            'API request failed with status ${res.statusCode}: ${res.body}');
+        throw Exception(data['message'] ?? 'Failed to update product status');
       }
     } catch (e) {
-      print('Error in _toggleProductAvailability: $e');
+      print('Error toggling product availability: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to update product status: ${e.toString()}'),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
         ),
       );
     }
@@ -749,7 +734,7 @@ print('Invoice generation response: ${res.body}');
 
       if (_selectedPredefinedItem != null) {
         // Get image URL from predefined items
-        imageUrl = _getPredefinedItemImageUrl(_selectedPredefinedItem!);
+        imageUrl = _getPredefinedItemImageUrl(_selectedPredefinedItem!) ?? _selectedProductImageUrl;
       }
 
       final productData = {
@@ -763,8 +748,9 @@ print('Invoice generation response: ${res.body}');
         'isAvailable': true,
       };
 
+      // Use admin-specific endpoint
       final res = await http.post(
-        Uri.parse('$_baseUrl/items'),
+        Uri.parse('$_baseUrl/admin/items'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -786,7 +772,7 @@ print('Add product response: ${res.body}');
         );
         _clearProductForm();
         await _fetchProducts(); // Refresh products list
-        setState(() => _tabIndex = 4); // Switch to products tab
+        setState(() => _tabIndex = 2); // Switch to products tab
       } else {
         throw Exception(data['message'] ??
             'Failed to add product: ${res.statusCode} - ${res.body}');
@@ -822,7 +808,7 @@ print('Add product response: ${res.body}');
       String? imageUrl = _selectedProductImageUrl;
 
       if (_selectedPredefinedItem != null) {
-        imageUrl = _getPredefinedItemImageUrl(_selectedPredefinedItem!);
+        imageUrl = _getPredefinedItemImageUrl(_selectedPredefinedItem!) ?? _selectedProductImageUrl;
       }
 
       final productData = {
@@ -835,8 +821,9 @@ print('Add product response: ${res.body}');
         'unit': _selectedProductUnit,
       };
 
+      // Use admin-specific endpoint
       final res = await http.put(
-        Uri.parse('$_baseUrl/items/$_editingProductId'),
+        Uri.parse('$_baseUrl/admin/items/$_editingProductId'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -855,7 +842,7 @@ print('Add product response: ${res.body}');
         );
         _clearProductForm();
         await _fetchProducts(); // Refresh products list
-        setState(() => _tabIndex = 4); // Switch to products tab
+        setState(() => _tabIndex = 2); // Switch to products tab
       } else {
         throw Exception(data['message'] ??
             'Failed to update product: ${res.statusCode} - ${res.body}');
@@ -883,8 +870,9 @@ print('Add product response: ${res.body}');
         return;
       }
 
+      // Use admin-specific endpoint
       final res = await http.delete(
-        Uri.parse('$_baseUrl/items/$productId'),
+        Uri.parse('$_baseUrl/admin/items/$productId'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -918,6 +906,7 @@ print('Add product response: ${res.body}');
 
   void _editProduct(Product product) {
     _productNameController.text = product.name;
+    _productDescriptionController.clear();
     _productDescriptionController.text = product.description;
     _productPriceController.text = product.price.toString();
     _productQuantityController.text = '1'; // Default quantity
@@ -925,11 +914,12 @@ print('Add product response: ${res.body}');
     _selectedProductUnit = 'kg'; // Default unit
     _selectedProductImageUrl = product.imageUrl;
     _selectedPredefinedItem = null;
+    _showImageSelector = false;
 
     setState(() {
       _isEditProductMode = true;
       _editingProductId = product.id;
-      _tabIndex = 6; // Switch to add product tab
+      _tabIndex = 4; // Switch to add product tab
     });
   }
 
@@ -944,28 +934,12 @@ print('Add product response: ${res.body}');
     _selectedPredefinedItem = null;
     _isEditProductMode = false;
     _editingProductId = null;
+    _showImageSelector = false;
   }
 
-  String _getPredefinedItemImageUrl(String itemName) {
-    // Map predefined items to image URLs
-    final predefinedImages = {
-      'Apple':
-          'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400',
-      'Banana':
-          'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400',
-      'Orange':
-          'https://images.unsplash.com/photo-1547514701-42782101795e?w=400',
-      'Milk': 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400',
-      'Bread':
-          'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400',
-      'Eggs':
-          'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=400',
-      'Chicken':
-          'https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400',
-      'Rice':
-          'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400',
-    };
-    return predefinedImages[itemName] ?? '';
+  String? _getPredefinedItemImageUrl(String itemName) {
+    // Use the GroceryItems class from the items module
+    return GroceryItems.getImageUrl(itemName);
   }
 
   void _showDeleteProductConfirmation(Product product) {
@@ -1394,6 +1368,7 @@ print('Add product response: ${res.body}');
                   children: [
                     _statCard(
                         "No. of Users", _totalUsers.toString(), Icons.people),
+                    const SizedBox(height: 20),    
                    
                     _statCard("Total Products", _totalProducts.toString(),
                         Icons.inventory),
@@ -1811,161 +1786,279 @@ print('Add product response: ${res.body}');
 
                     // Predefined Items
                     const Text(
-                      "Quick Add (Optional)",
+                      "Choose Product Image *",
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF151A24),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedPredefinedItem,
-                        dropdownColor: const Color(0xFF23293A),
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
-                          ),
-                          hintText: 'Select a predefined item (optional)',
-                          hintStyle: TextStyle(color: Colors.grey),
-                        ),
-                        items: [
-                          const DropdownMenuItem<String>(
-                            value: null,
-                            child: Text('Custom Item'),
-                          ),
-                          const DropdownMenuItem<String>(
-                            value: 'Apple',
-                            child: Text('Apple'),
-                          ),
-                          const DropdownMenuItem<String>(
-                            value: 'Banana',
-                            child: Text('Banana'),
-                          ),
-                          const DropdownMenuItem<String>(
-                            value: 'Orange',
-                            child: Text('Orange'),
-                          ),
-                          const DropdownMenuItem<String>(
-                            value: 'Milk',
-                            child: Text('Milk'),
-                          ),
-                          const DropdownMenuItem<String>(
-                            value: 'Bread',
-                            child: Text('Bread'),
-                          ),
-                          const DropdownMenuItem<String>(
-                            value: 'Eggs',
-                            child: Text('Eggs'),
-                          ),
-                          const DropdownMenuItem<String>(
-                            value: 'Chicken',
-                            child: Text('Chicken'),
-                          ),
-                          const DropdownMenuItem<String>(
-                            value: 'Rice',
-                            child: Text('Rice'),
-                          ),
-                        ],
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _selectedPredefinedItem = newValue;
-                            if (newValue != null) {
-                              _productNameController.text = newValue;
-                              _selectedProductImageUrl =
-                                  _getPredefinedItemImageUrl(newValue);
-                            }
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Custom Image URL
+                    const SizedBox(height: 4),
                     const Text(
-                      "Image URL (Optional)",
+                      "Select an image from our predefined collection. This is required to add a product.",
                       style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
+                        color: Colors.grey,
+                        fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    TextFormField(
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFF151A24),
-                        hintText:
-                            'Enter image URL or use predefined item above',
-                        hintStyle: const TextStyle(color: Colors.grey),
-                        border: OutlineInputBorder(
+                    
+                    // Image Preview
+                    if (_selectedProductImageUrl != null)
+                      Container(
+                        width: 120,
+                        height: 120,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+                          border: Border.all(color: Colors.blueAccent, width: 2),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            _selectedProductImageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey[800],
+                                child: const Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.grey,
+                                  size: 40,
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
-                      onChanged: (value) {
+                    
+                    // Image Selector Button
+                    ElevatedButton.icon(
+                      onPressed: () {
                         setState(() {
-                          _selectedProductImageUrl =
-                              value.isEmpty ? null : value;
+                          _showImageSelector = !_showImageSelector;
                         });
                       },
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Submit Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isAddingProduct
-                            ? null
-                            : (_isEditProductMode
-                                ? _updateProduct
-                                : _addProduct),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                      icon: Icon(_showImageSelector ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
+                      label: Text(_showImageSelector ? 'Hide Image Selector' : 'Show Image Selector'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent.withOpacity(0.2),
+                        foregroundColor: Colors.blueAccent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: _isAddingProduct
-                            ? const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Text('Processing...'),
-                                ],
-                              )
-                            : Text(_isEditProductMode
-                                ? 'Update Product'
-                                : 'Add Product'),
                       ),
                     ),
+                    
+                    // Image Selector Grid
+                    if (_showImageSelector) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF151A24),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blueAccent.withOpacity(0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  "Select an image:",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const Spacer(),
+                                TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _selectedPredefinedItem = null;
+                                      _selectedProductImageUrl = null;
+                                      _productNameController.clear();
+                                    });
+                                  },
+                                  child: const Text(
+                                    "Clear Selection",
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            
+                            // Category Filter
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _categoryFilterChip('All', null),
+                                  _categoryFilterChip('Fruits', 'Fruits'),
+                                  _categoryFilterChip('Vegetables', 'Vegetables'),
+                                  _categoryFilterChip('Dairy', 'Dairy'),
+                                  _categoryFilterChip('Grains', 'Grains'),
+                                  _categoryFilterChip('Bakery', 'Bakery'),
+                                  _categoryFilterChip('Meat', 'Meat'),
+                                  _categoryFilterChip('Beverages', 'Beverages'),
+                                  _categoryFilterChip('Snacks', 'Snacks'),
+                                  _categoryFilterChip('Household', 'Household'),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            
+                            // Image Grid
+                            SizedBox(
+  height: 300,
+  child: GridView.builder(
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 4,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1,
+    ),
+    itemCount: _getFilteredItems().length,
+    itemBuilder: (context, index) {
+      final itemName = _getFilteredItems()[index];
+      final imageUrl = GroceryItems.getImageUrl(itemName);
+      final isSelected = _selectedPredefinedItem == itemName;
+
+      return InkWell(
+        onTap: () {
+          setState(() {
+            _selectedPredefinedItem = itemName;
+            _selectedProductImageUrl = imageUrl;
+            _productNameController.text = itemName;
+          });
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? Colors.blueAccent : Colors.grey.withOpacity(0.3),
+              width: isSelected ? 2 : 1,
+            ),
+            color: isSelected ? Colors.blueAccent.withOpacity(0.1) : Colors.transparent,
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                  child: imageUrl != null
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[800],
+                              child: const Icon(
+                                Icons.image_not_supported,
+                                color: Colors.grey,
+                                size: 24,
+                              ),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: Colors.grey[800],
+                          child: const Icon(
+                            Icons.image_not_supported,
+                            color: Colors.grey,
+                            size: 24,
+                          ),
+                        ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Text(
+                  itemName,
+                  style: TextStyle(
+                    color: isSelected ? Colors.blueAccent : Colors.white,
+                    fontSize: 10,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  ),
+),
+                          ],
+                        ),
+                      ),
+                    ],
+                    
+                    const SizedBox(height: 20),
+
+                    const SizedBox(height: 32),
+
+                                                             
+                     SizedBox(
+                       width: double.infinity,
+                       child: ElevatedButton(
+                         onPressed: _isAddingProduct
+                             ? null
+                             : (_selectedProductImageUrl == null 
+                                 ? null 
+                                 : (_isEditProductMode
+                                     ? _updateProduct
+                                     : _addProduct)),
+                         style: ElevatedButton.styleFrom(
+                           backgroundColor: _selectedProductImageUrl == null 
+                               ? Colors.grey 
+                               : Colors.blueAccent,
+                           foregroundColor: Colors.white,
+                           padding: const EdgeInsets.symmetric(vertical: 16),
+                           shape: RoundedRectangleBorder(
+                             borderRadius: BorderRadius.circular(12),
+                           ),
+                         ),
+                         child: _isAddingProduct
+                             ? const Row(
+                                 mainAxisAlignment: MainAxisAlignment.center,
+                                 children: [
+                                   SizedBox(
+                                     width: 20,
+                                     height: 20,
+                                     child: CircularProgressIndicator(
+                                       strokeWidth: 2,
+                                       valueColor: AlwaysStoppedAnimation<Color>(
+                                         Colors.white,
+                                       ),
+                                     ),
+                                   ),
+                                   SizedBox(width: 12),
+                                   Text('Processing...'),
+                                 ],
+                               )
+                             : _selectedProductImageUrl == null
+                                 ? const Row(
+                                     mainAxisAlignment: MainAxisAlignment.center,
+                                     children: [
+                                       Icon(Icons.image_not_supported, size: 20),
+                                       SizedBox(width: 8),
+                                       Text('Please select an image first'),
+                                     ],
+                                   )
+                                 : Text(_isEditProductMode
+                                     ? 'Update Product'
+                                     : 'Add Product'),
+                       ),
+                     ),
                   ],
                 ),
               ),
@@ -2178,42 +2271,10 @@ crossAxisAlignment: CrossAxisAlignment.start,
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 28,
+                  fontSize: 20,
                 ),
               ),
-              const Spacer(),
-              ElevatedButton.icon(
-                onPressed: () {
-                  _clearProductForm();
-                  setState(() => _tabIndex = 6);
-                },
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text("Add Product"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.blueAccent.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'Showing ${_filteredProducts.length} of ${_totalProducts}',
-                  style: const TextStyle(
-                    color: Colors.blueAccent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+             
             ],
           ),
           const SizedBox(height: 20),
@@ -2316,7 +2377,7 @@ crossAxisAlignment: CrossAxisAlignment.start,
     );
   }
 
-  Widget _productFilterDropdown() {
+Widget _productFilterDropdown() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -2327,7 +2388,7 @@ crossAxisAlignment: CrossAxisAlignment.start,
         value: _productFilter,
         dropdownColor: const Color(0xFF23293A),
         underline: Container(),
-        icon: const Icon(Icons.filter_list, color: Colors.grey, size: 20),
+        icon: const Icon(Icons.filter_list, color: Colors.grey, size: 15),
         items: [
           DropdownMenuItem(
               value: 'all',
@@ -2361,7 +2422,7 @@ crossAxisAlignment: CrossAxisAlignment.start,
       decoration: InputDecoration(
         filled: true,
         fillColor: const Color(0xFF151A24),
-        hintText: 'Search products by name, category, or seller...',
+        hintText: 'Search product',
         hintStyle: const TextStyle(color: Colors.grey),
         prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
         border: OutlineInputBorder(
@@ -2573,7 +2634,7 @@ crossAxisAlignment: CrossAxisAlignment.start,
                         Switch(
                           value: product.isAvailable,
                           onChanged: (value) =>
-                              _toggleProductAvailability(product.id, value),
+                              _toggleProductAvailability(product),
                           activeColor: Colors.green,
                           inactiveThumbColor: Colors.orange,
                           inactiveTrackColor: Colors.orange.withOpacity(0.3),
@@ -2738,7 +2799,7 @@ crossAxisAlignment: CrossAxisAlignment.start,
                             Switch(
                               value: product.isAvailable,
                               onChanged: (value) =>
-                                  _toggleProductAvailability(product.id, value),
+                                  _toggleProductAvailability(product),
                               activeColor: Colors.green,
                               inactiveThumbColor: Colors.orange,
                               inactiveTrackColor:
@@ -2855,65 +2916,19 @@ crossAxisAlignment: CrossAxisAlignment.start,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Text(
-                "Orders & Invoices",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 28,
-                ),
-              ),
-              const Spacer(),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text("Refresh"),
-                onPressed: _fetchOrders,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(child: _orderSearchBar()),
-              const SizedBox(width: 16),
-              _orderFilterDropdown(),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _orderFilterChip('All', 'all', _orders.length),
-              const SizedBox(width: 8),
-              _orderFilterChip(
-                  'Pending',
-                  'pending',
-                  _orders.where((o) => o.status == 'pending').length,
-                  Colors.orange),
-              const SizedBox(width: 8),
-              _orderFilterChip(
-                  'Completed',
-                  'completed',
-                  _orders.where((o) => o.status == 'completed').length,
-                  Colors.green),
-              const SizedBox(width: 8),
-              _orderFilterChip(
-                  'Cancelled',
-                  'cancelled',
-                  _orders.where((o) => o.status == 'cancelled').length,
-                  Colors.red),
-            ],
+          const Text(
+            "Orders & Invoices",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+            ),
           ),
           const SizedBox(height: 20),
           Expanded(
             child: _isLoadingOrders
                 ? const Center(child: CircularProgressIndicator())
-                : _filteredOrders.isEmpty
+                : _orders.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -2939,113 +2954,13 @@ crossAxisAlignment: CrossAxisAlignment.start,
                         ),
                       )
                     : ListView.builder(
-                        itemCount: _filteredOrders.length,
+                        itemCount: _orders.length,
                         itemBuilder: (context, index) {
-                          return _orderCard(_filteredOrders[index]);
+                          return _orderCard(_orders[index]);
                         },
                       ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _orderSearchBar() {
-    return TextField(
-      controller: _orderSearchController,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: const Color(0xFF151A24),
-        hintText: 'Search orders by customer name, email, or order ID...',
-        hintStyle: const TextStyle(color: Colors.grey),
-        prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-    );
-  }
-
-  Widget _orderFilterDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF151A24),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: DropdownButton<String>(
-        value: _orderFilter,
-        dropdownColor: const Color(0xFF23293A),
-        underline: Container(),
-        icon: const Icon(Icons.filter_list, color: Colors.grey, size: 20),
-        items: [
-          DropdownMenuItem(
-              value: 'all',
-              child: Text('All Orders (${_orders.length})',
-                  style: const TextStyle(color: Colors.white))),
-          DropdownMenuItem(
-              value: 'pending',
-              child: Text(
-                  'Pending (${_orders.where((o) => o.status == 'pending').length})',
-                  style: const TextStyle(color: Colors.orange))),
-          DropdownMenuItem(
-              value: 'completed',
-              child: Text(
-                  'Completed (${_orders.where((o) => o.status == 'completed').length})',
-                  style: const TextStyle(color: Colors.green))),
-          DropdownMenuItem(
-              value: 'cancelled',
-              child: Text(
-                  'Cancelled (${_orders.where((o) => o.status == 'cancelled').length})',
-                  style: const TextStyle(color: Colors.red))),
-        ],
-        onChanged: (value) {
-          if (value != null) {
-            setState(() {
-              _orderFilter = value;
-              _filterOrders();
-            });
-          }
-        },
-      ),
-    );
-  }
-
-  Widget _orderFilterChip(String label, String value, int count,
-      [Color? color]) {
-    final isSelected = _orderFilter == value;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _orderFilter = value;
-          _filterOrders();
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (color ?? Colors.blueAccent).withOpacity(0.2)
-              : Colors.grey.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color:
-                isSelected ? (color ?? Colors.blueAccent) : Colors.transparent,
-            width: 1,
-          ),
-        ),
-        child: Text(
-          '$label ($count)',
-          style: TextStyle(
-            color: isSelected ? (color ?? Colors.blueAccent) : Colors.grey[300],
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
       ),
     );
   }
@@ -3160,7 +3075,6 @@ crossAxisAlignment: CrossAxisAlignment.start,
       ),
     );
   }
-
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
@@ -3176,6 +3090,63 @@ crossAxisAlignment: CrossAxisAlignment.start,
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  // Refresh the image URL field
+  void _refreshImageUrlField() {
+    setState(() {});
+  }
+  
+  // Get filtered items based on selected category
+  List<String> _getFilteredItems() {
+    if (_selectedProductCategory == 'Fruits') {
+      return GroceryItems.getItemsByCategory('fruits');
+    } else if (_selectedProductCategory == 'Vegetables') {
+      return GroceryItems.getItemsByCategory('vegetables');
+    } else if (_selectedProductCategory == 'Dairy') {
+      return GroceryItems.getItemsByCategory('dairy');
+    } else if (_selectedProductCategory == 'Grains') {
+      return GroceryItems.getItemsByCategory('grains & cereals');
+    } else if (_selectedProductCategory == 'Bakery') {
+      return GroceryItems.getItemsByCategory('bakery');
+    } else if (_selectedProductCategory == 'Meat') {
+      return GroceryItems.getItemsByCategory('seafood & meat');
+    } else if (_selectedProductCategory == 'Beverages') {
+      return GroceryItems.getItemsByCategory('beverages');
+    } else if (_selectedProductCategory == 'Snacks') {
+      return GroceryItems.getItemsByCategory('snacks & processed');
+    } else if (_selectedProductCategory == 'Household') {
+      return GroceryItems.getItemsByCategory('condiments & sauces');
+    } else {
+      return GroceryItems.getAllItems();
+    }
+  }
+  
+  // Category filter chip widget
+  Widget _categoryFilterChip(String label, String? category) {
+    final isSelected = _selectedProductCategory == (category ?? 'all');
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (selected) {
+          setState(() {
+            if (category != null) {
+              _selectedProductCategory = category;
+            }
+            _showImageSelector = true;
+          });
+        },
+        selectedColor: Colors.blueAccent.withOpacity(0.3),
+        checkmarkColor: Colors.blueAccent,
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.blueAccent : Colors.white,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+        backgroundColor: Colors.grey.withOpacity(0.1),
+      ),
+    );
   }
 }
 

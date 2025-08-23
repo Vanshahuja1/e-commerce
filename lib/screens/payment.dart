@@ -566,7 +566,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   padding: const EdgeInsets.all(8),
                   color: Colors.yellow[100],
                   child: Text(
-                    'DEBUG: Total: ₹${totalAmount.toStringAsFixed(2)}, Items: ${cartItems.length}',
+                    'DEBUG: Total: BHD${totalAmount.toStringAsFixed(2)}, Items: ${cartItems.length}',
                     style: const TextStyle(fontSize: 12),
                     textAlign: TextAlign.center,
                   ),
@@ -678,7 +678,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           ),
                         ),
                         Text(
-                          '₹${item['price']?.toString() ?? '0'}',
+                          'BHD${item['price']?.toString() ?? '0'}',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.green[700],
@@ -1228,11 +1228,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
             )
           else ...[
-            _buildSummaryRow('Subtotal', '₹${subtotal.toStringAsFixed(2)}'),
-            _buildSummaryRow('Delivery Fee', '₹${deliveryFee.toStringAsFixed(2)}'),
-            _buildSummaryRow('Tax (${(taxRate * 100).toInt()}%)', '₹${taxAmount.toStringAsFixed(2)}'),
+            _buildSummaryRow('Subtotal', 'BHD${subtotal.toStringAsFixed(2)}'),
+            _buildSummaryRow('Delivery Fee', 'BHD${deliveryFee.toStringAsFixed(2)}'),
+            _buildSummaryRow('Tax (${(taxRate * 100).toInt()}%)', 'BHD${taxAmount.toStringAsFixed(2)}'),
             const Divider(thickness: 1),
-            _buildSummaryRow('Total Amount', '₹${finalTotal.toStringAsFixed(2)}', isTotal: true),
+            _buildSummaryRow('Total Amount', 'BHD${finalTotal.toStringAsFixed(2)}', isTotal: true),
           ],
         ],
       ),
@@ -1321,7 +1321,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         ),
                       ),
                       Text(
-                        '₹${finalTotal.toStringAsFixed(2)}',
+                        'BHD${finalTotal.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,

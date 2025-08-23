@@ -537,7 +537,7 @@ class ItemCard extends StatelessWidget {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    '₹$itemPrice/$itemUnit',
+                                    'BHD$itemPrice/$itemUnit',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
