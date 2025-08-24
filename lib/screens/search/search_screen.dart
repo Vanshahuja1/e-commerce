@@ -272,19 +272,6 @@ void didChangeDependencies() {
     });
   }
 
-  void _selectCategory(String category) {
-    setState(() {
-      if (selectedCategory == category) {
-        selectedCategory = null;
-        _searchController.clear();
-      } else {
-        selectedCategory = category;
-        _searchController.text = category;
-      }
-      filterProducts();
-    });
-  }
-
   void _selectPriceSort(PriceSortOption option) {
     setState(() {
       selectedPriceSort = option;
@@ -402,13 +389,6 @@ void didChangeDependencies() {
 
   @override
   Widget build(BuildContext context) {
-    final List<String> categories = [
-      'All',
-      'Fresh Fruit',
-    'Vegetables',
-    'Herbs & Lettuce',
-    'Dried Fruit',
-    ];
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: Header(
@@ -555,42 +535,9 @@ void didChangeDependencies() {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: 40,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: categories.length,
-                      itemBuilder: (context, index) {
-                        final category = categories[index];
-                        final isSelected = selectedCategory == category;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: FilterChip(
-                            label: Text(category),
-                            selected: isSelected,
-                            onSelected: (_) => _selectCategory(category),
-                            backgroundColor: Colors.grey.shade100,
-                            selectedColor: Colors.green.shade100,
-                            checkmarkColor: Colors.green.shade700,
-                            labelStyle: TextStyle(
-                              color: isSelected ? Colors.green.shade700 : Colors.grey.shade800,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              side: BorderSide(
-                                color: isSelected ? Colors.green.shade700 : Colors.transparent,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
                   if (selectedCategory != null)
                     Container(
-                      margin: const EdgeInsets.only(top: 8),
+                      margin: const EdgeInsets.only(top: 16),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.green.shade50,
@@ -999,4 +946,4 @@ void didChangeDependencies() {
     _searchController.dispose();
     super.dispose();
   }
-} 
+}
