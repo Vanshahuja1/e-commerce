@@ -255,19 +255,22 @@ class ProductsSectionState extends State<ProductsSection> {
                   ),
                 )
               else
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: _getChildAspectRatio(screenWidth),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: _getChildAspectRatio(screenWidth),
+                    ),
+                    itemCount: products.length > 15 ? 15 : products.length,
+                    itemBuilder: (context, index) {
+                      return _buildProductCard(products[index], screenWidth);
+                    },
                   ),
-                  itemCount: products.length > 15 ? 15 : products.length,
-                  itemBuilder: (context, index) {
-                    return _buildProductCard(products[index], screenWidth);
-                  },
                 ),
             ],
           ),
@@ -296,7 +299,11 @@ class ProductsSectionState extends State<ProductsSection> {
 
     double originalPrice = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
     double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0.0;
+    double tax = double.tryParse(product['tax']?.toString() ?? '0') ?? 0.0;
+    bool hasVAT = product['hasVAT'] == true;
+    
     double discountedPrice = originalPrice * (1 - discount / 100);
+    double finalPrice = discountedPrice * (1 + tax / 100);
     bool hasDiscount = discount > 0;
 
     return GestureDetector(
@@ -311,163 +318,182 @@ class ProductsSectionState extends State<ProductsSection> {
           );
         }
       },
-      child: IntrinsicHeight(
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.shade200,
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image Section
-              Expanded(
-                flex: 5,
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      topRight: Radius.circular(12),
+      child: Container(
+        height: null,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade200,
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image Section
+            Expanded(
+              flex: 5,
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
+                      ),
+                      child: product['imageUrl'] != null &&
+                              product['imageUrl'].toString().isNotEmpty
+                          ? Image.network(
+                              product['imageUrl'].toString(),
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              errorBuilder: (context, error, stackTrace) {
+                                return _buildPlaceholderImage();
+                              },
+                            )
+                          : _buildPlaceholderImage(),
                     ),
-                  ),
-                  child: Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(12),
-                          topRight: Radius.circular(12),
-                        ),
-                        child: product['imageUrl'] != null &&
-                                product['imageUrl'].toString().isNotEmpty
-                            ? Image.network(
-                                product['imageUrl'].toString(),
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return _buildPlaceholderImage();
-                                },
-                              )
-                            : _buildPlaceholderImage(),
-                      ),
-                      if (hasDiscount)
-                        Positioned(
-                          top: 6,
-                          left: 6,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '${discount.toInt()}% OFF',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: screenWidth > 600 ? 8 : 7,
-                                fontWeight: FontWeight.bold,
-                              ),
+                    if (hasDiscount)
+                      Positioned(
+                        top: 6,
+                        left: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${discount.toInt()}% OFF',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: screenWidth > 600 ? 8 : 7,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                    if (hasVAT)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade600,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'VAT',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: screenWidth > 600 ? 7 : 6,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              // Product Details Section
-              Expanded(
-                flex: 4,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth > 600 ? 10 : 8,
-                      vertical: screenWidth > 600 ? 8 : 6),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Product Name with Add Button
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              product['name']?.toString() ?? 'Unknown Product',
-                              style: TextStyle(
-                                fontSize: screenWidth > 600 ? 12 : 10,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                                height: 1.2,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+            ),
+            // Product Details Section
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                    horizontal: screenWidth > 600 ? 10 : 8,
+                    vertical: screenWidth > 600 ? 8 : 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Product Name with Add Button
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product['name']?.toString() ?? 'Unknown Product',
+                            style: TextStyle(
+                              fontSize: screenWidth > 600 ? 12 : 10,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                              height: 1.2,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(width: 6),
-                          _buildAddButton(product, quantity, screenWidth),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      // Quantity/Weight
-                      Text(
-                        '${product['weight'] ?? product['quantity'] ?? '500 g'} - Approx. ${product['pieces'] ?? '4-5pcs'}',
-                        style: TextStyle(
-                          fontSize: screenWidth > 600 ? 9 : 8,
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.normal,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        const SizedBox(width: 6),
+                        _buildAddButton(product, quantity, screenWidth),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    // Quantity/Weight
+                    Text(
+                      '${product['weight'] ?? product['quantity'] ?? '500 g'} - Approx. ${product['pieces'] ?? '4-5pcs'}',
+                      style: TextStyle(
+                        fontSize: screenWidth > 600 ? 9 : 8,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.normal,
                       ),
-                      const SizedBox(height: 4),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: hasDiscount
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'BHD ${originalPrice.toStringAsFixed(3)}',
-                                    style: TextStyle(
-                                      fontSize: screenWidth > 600 ? 10 : 9,
-                                      color: Colors.grey.shade500,
-                                      decoration: TextDecoration.lineThrough,
-                                      decorationColor: Colors.grey.shade500,
-                                    ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: hasDiscount
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'BHD ${originalPrice.toStringAsFixed(3)}',
+                                  style: TextStyle(
+                                    fontSize: screenWidth > 600 ? 10 : 9,
+                                    color: Colors.grey.shade500,
+                                    decoration: TextDecoration.lineThrough,
+                                    decorationColor: Colors.grey.shade500,
                                   ),
-                                  Text(
-                                    'BHD ${discountedPrice.toStringAsFixed(3)}',
-                                    style: TextStyle(
-                                      fontSize: screenWidth > 600 ? 13 : 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Text(
-                                'BHD ${originalPrice.toStringAsFixed(3)}',
-                                style: TextStyle(
-                                  fontSize: screenWidth > 600 ? 13 : 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
                                 ),
+                                Text(
+                                  'BHD ${finalPrice.toStringAsFixed(3)}',
+                                  style: TextStyle(
+                                    fontSize: screenWidth > 600 ? 13 : 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Text(
+                              'BHD ${finalPrice.toStringAsFixed(3)}',
+                              style: TextStyle(
+                                fontSize: screenWidth > 600 ? 13 : 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
                               ),
-                      ),
-                    ],
-                  ),
+                            ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
