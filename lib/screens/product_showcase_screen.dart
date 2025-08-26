@@ -322,7 +322,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                         _buildDetailRow('Available Quantity', '${product['quantity']?.toString() ?? '0'} ${product['unit']?.toString() ?? 'units'}'),
                         if (product['discount'] != null && product['discount'] > 0)
                           _buildDetailRow('Discount', '${product['discount']}%'),
-                        //if (product['tax'] != null && product['tax'] > 0)
+                        if (product['tax'] != null && product['tax'] > 0)
                           _buildDetailRow('Tax', '${product['tax']}%'),
                         if (product['hasVAT'] == true)
                           _buildDetailRow('VAT', 'Applicable'),

@@ -681,7 +681,7 @@ void didChangeDependencies() {
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
         return GridView.builder(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
           physics: const AlwaysScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
@@ -716,6 +716,15 @@ void didChangeDependencies() {
   Widget _buildProductCard(dynamic product, double screenWidth) {
     String productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
     int quantity = cartQuantities[productId] ?? 0;
+    
+    double originalPrice = _parsePrice(product['price']);
+    double discount = (product['discount'] ?? 0).toDouble();
+    double tax = (product['tax'] ?? 0).toDouble();
+    bool hasVAT = product['hasVAT'] ?? false;
+    
+    double discountedPrice = originalPrice * (1 - discount / 100);
+    double finalPrice = discountedPrice * (1 + tax / 100);
+    bool hasDiscount = discount > 0;
 
     return GestureDetector(
       onTap: () {
@@ -741,7 +750,7 @@ void didChangeDependencies() {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Image Section
+              // Image Section with discount badge
               Expanded(
                 flex: 5,
                 child: Container(
@@ -753,23 +762,47 @@ void didChangeDependencies() {
                       topRight: Radius.circular(12),
                     ),
                   ),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      topRight: Radius.circular(12),
-                    ),
-                    child: product['imageUrl'] != null &&
-                            product['imageUrl'].toString().isNotEmpty
-                        ? Image.network(
-                            product['imageUrl'].toString(),
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildPlaceholderImage();
-                            },
-                          )
-                        : _buildPlaceholderImage(),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(12),
+                          topRight: Radius.circular(12),
+                        ),
+                        child: product['imageUrl'] != null &&
+                                product['imageUrl'].toString().isNotEmpty
+                            ? Image.network(
+                                product['imageUrl'].toString(),
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return _buildPlaceholderImage();
+                                },
+                              )
+                            : _buildPlaceholderImage(),
+                      ),
+                      if (hasDiscount)
+                        Positioned(
+                          top: 6,
+                          left: 6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade600,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${discount.toInt()}% OFF',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: screenWidth > 600 ? 9 : 7,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -818,17 +851,47 @@ void didChangeDependencies() {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      // Price
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          'BHD ${product['price']?.toString() ?? '0.225'}',
-                          style: TextStyle(
-                            fontSize: screenWidth > 600 ? 13 : 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (hasDiscount) ...[
+                            Text(
+                              'BHD ${originalPrice.toStringAsFixed(3)}',
+                              style: TextStyle(
+                                fontSize: screenWidth > 600 ? 10 : 9,
+                                color: Colors.grey.shade500,
+                                decoration: TextDecoration.lineThrough,
+                                decorationColor: Colors.grey.shade500,
+                              ),
+                            ),
+                            Text(
+                              'BHD ${finalPrice.toStringAsFixed(3)}',
+                              style: TextStyle(
+                                fontSize: screenWidth > 600 ? 13 : 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red.shade600,
+                              ),
+                            ),
+                          ] else ...[
+                            Text(
+                              'BHD ${finalPrice.toStringAsFixed(3)}',
+                              style: TextStyle(
+                                fontSize: screenWidth > 600 ? 13 : 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                          if (hasVAT)
+                            Text(
+                              'Inc. VAT',
+                              style: TextStyle(
+                                fontSize: screenWidth > 600 ? 8 : 7,
+                                color: Colors.grey.shade500,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ),
