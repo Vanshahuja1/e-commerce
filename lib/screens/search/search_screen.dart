@@ -579,7 +579,7 @@ void didChangeDependencies() {
         currentIndex: 1, // Set to 1 for search/categories tab
         onHomeTap: () => Navigator.pushReplacementNamed(context, '/home'),
         onCategoriesTap: () {}, // Already on search/categories screen
-        onDiscountTap: () => Navigator.pushNamed(context, '/offers'),
+        onDiscountTap: () => Navigator.pushNamed(context, '/discount'),
         onProfileTap: () => Navigator.pushNamed(context, '/profile'),
       ),
     );
