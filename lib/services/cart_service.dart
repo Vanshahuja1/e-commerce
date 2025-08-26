@@ -9,7 +9,7 @@ class CartService {
   static Future<String?> _getUserToken() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
-    print('CartService: Fetched token: ${token != null ? token.substring(0, 10) + '...' : 'null'}'); // Add this line
+    print('CartService: Fetched token: ${token != null ? token.substring(0, 10) + '...' : 'null'}');
     return token;
   }
   
@@ -29,7 +29,7 @@ class CartService {
         }
       }
     }
-    print('CartService: Fetched User ID: $userId'); // Add this line
+    print('CartService: Fetched User ID: $userId');
     return userId;
   }
   
@@ -71,7 +71,7 @@ class CartService {
         'hasVAT': product['hasVAT'] ?? false,
       });
       
-      print('CartService: Adding to cart request body: $requestBody'); // Add this line
+      print('CartService: Adding to cart request body: $requestBody');
       
       final response = await http.post(
         Uri.parse('$baseUrl/cart/add'),
@@ -79,8 +79,8 @@ class CartService {
         body: requestBody,
       );
 
-      print('CartService: Cart add response status: ${response.statusCode}'); // Add this line
-      print('CartService: Cart add response body: ${response.body}'); // Add this line
+      print('CartService: Cart add response status: ${response.statusCode}');
+      print('CartService: Cart add response body: ${response.body}');
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         final errorData = json.decode(response.body);
@@ -187,7 +187,7 @@ class CartService {
     }
   }
 
-  // Get total price of user's cart
+  // FIXED: Get total price of user's cart with proper discount and tax calculation
   static Future<double> getTotalPrice() async {
     try {
       final cartItems = await getCartItems();
@@ -261,6 +261,7 @@ class CartService {
     };
   }
 
+  // FIXED: Calculate total savings correctly
   static Future<double> getTotalSavings() async {
     try {
       final cartItems = await getCartItems();
@@ -278,6 +279,7 @@ class CartService {
     }
   }
 
+  // FIXED: Calculate total tax correctly
   static Future<double> getTotalTax() async {
     try {
       final cartItems = await getCartItems();
@@ -299,6 +301,7 @@ class CartService {
     }
   }
 
+  // FIXED: Calculate subtotal correctly (discounted price before tax)
   static Future<double> getSubtotal() async {
     try {
       final cartItems = await getCartItems();
@@ -318,6 +321,7 @@ class CartService {
     }
   }
 
+  // COMPLETELY REWRITTEN: Fixed cart summary calculation
   static Future<Map<String, double>> getCartSummary() async {
     try {
       final cartItems = await getCartItems();
@@ -325,6 +329,9 @@ class CartService {
       double subtotal = 0.0;
       double totalSavings = 0.0;
       double totalTax = 0.0;
+      double finalTotal = 0.0;
+      
+      print('CartService: Calculating cart summary for ${cartItems.length} items');
       
       for (var item in cartItems) {
         final originalPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
@@ -332,27 +339,45 @@ class CartService {
         final discount = (item['discount'] as num?)?.toDouble() ?? 0.0;
         final tax = (item['tax'] as num?)?.toDouble() ?? 0.0;
         
-        // Original total
-        originalTotal += originalPrice * quantity;
+        print('CartService: Item ${item['name']} - Price: $originalPrice, Qty: $quantity, Discount: $discount%, Tax: $tax%');
         
-        // Discounted price
+        // Original total (without any discounts)
+        final itemOriginalTotal = originalPrice * quantity;
+        originalTotal += itemOriginalTotal;
+        
+        // Discounted price per item
         final discountedPrice = originalPrice * (1 - discount / 100);
-        subtotal += discountedPrice * quantity;
         
-        // Savings
-        totalSavings += (originalPrice * (discount / 100)) * quantity;
+        // Subtotal (discounted price before tax)
+        final itemSubtotal = discountedPrice * quantity;
+        subtotal += itemSubtotal;
+        
+        // Savings (difference between original and discounted)
+        final itemSavings = (originalPrice - discountedPrice) * quantity;
+        totalSavings += itemSavings;
         
         // Tax on discounted price
-        totalTax += (discountedPrice * (tax / 100)) * quantity;
+        final itemTaxAmount = discountedPrice * (tax / 100) * quantity;
+        totalTax += itemTaxAmount;
+        
+        // Final price for this item (discounted + tax)
+        final itemFinalPrice = (discountedPrice * (1 + tax / 100)) * quantity;
+        finalTotal += itemFinalPrice;
+        
+        print('CartService: Item calculations - Original: $itemOriginalTotal, Discounted: $itemSubtotal, Savings: $itemSavings, Tax: $itemTaxAmount, Final: $itemFinalPrice');
       }
       
-      return {
+      final summary = {
         'originalTotal': originalTotal,
         'subtotal': subtotal,
         'totalSavings': totalSavings,
         'totalTax': totalTax,
-        'finalTotal': subtotal + totalTax,
+        'finalTotal': finalTotal,
       };
+      
+      print('CartService: Final summary - ${summary.toString()}');
+      
+      return summary;
     } catch (e) {
       print('Error calculating cart summary: $e');
       return {

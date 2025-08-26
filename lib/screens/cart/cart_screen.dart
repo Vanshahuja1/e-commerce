@@ -16,7 +16,13 @@ class _CartScreenState extends State<CartScreen> {
   bool isLoading = true;
   UserModel? _currentUser;
   int _cartItemCount = 0;
-  double _totalPrice = 0;
+  Map<String, double> _cartSummary = {
+    'originalTotal': 0.0,
+    'subtotal': 0.0,
+    'totalSavings': 0.0,
+    'totalTax': 0.0,
+    'finalTotal': 0.0,
+  };
   bool _isProcessing = false;
   final TextEditingController _specialRequestsController = TextEditingController();
 
@@ -46,13 +52,13 @@ class _CartScreenState extends State<CartScreen> {
     try {
       final items = await CartService.getCartItems();
       final count = await CartService.getCartItemCount();
-      final total = await CartService.getTotalPrice();
+      final summary = await CartService.getCartSummary();
 
       if (mounted) {
         setState(() {
           cartItems = items;
           _cartItemCount = count;
-          _totalPrice = total;
+          _cartSummary = summary;
           isLoading = false;
         });
       }
@@ -240,11 +246,44 @@ class _CartScreenState extends State<CartScreen> {
       context,
       '/payment',
       arguments: {
-        'amount': _totalPrice,
+        'amount': _cartSummary['finalTotal'],
         'cartItems': cartItems,
         'specialRequests': _specialRequestsController.text,
+        'cartSummary': _cartSummary,
       },
     );
+  }
+
+  // Helper method to calculate individual item price details
+  Map<String, double> _calculateItemPrices(Map<String, dynamic> item) {
+    final quantity = item['quantity'] as int? ?? 1;
+    final originalPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
+    final discount = (item['discount'] as num?)?.toDouble() ?? 0.0;
+    final tax = (item['tax'] as num?)?.toDouble() ?? 0.0;
+    
+    // Step 1: Apply discount to original price
+    final discountedPrice = originalPrice * (1 - discount / 100);
+    
+    // Step 2: Calculate tax on discounted price
+    final finalPriceWithTax = discountedPrice * (1 + tax / 100);
+    
+    // Step 3: Calculate totals for this item
+    final itemOriginalTotal = originalPrice * quantity;
+    final itemDiscountedTotal = discountedPrice * quantity;
+    final itemFinalTotal = finalPriceWithTax * quantity;
+    final itemSavings = (originalPrice - discountedPrice) * quantity;
+    final itemTaxAmount = (finalPriceWithTax - discountedPrice) * quantity;
+
+    return {
+      'originalPrice': originalPrice,
+      'discountedPrice': discountedPrice,
+      'finalPriceWithTax': finalPriceWithTax,
+      'itemOriginalTotal': itemOriginalTotal,
+      'itemDiscountedTotal': itemDiscountedTotal,
+      'itemFinalTotal': itemFinalTotal,
+      'itemSavings': itemSavings,
+      'itemTaxAmount': itemTaxAmount,
+    };
   }
 
   @override
@@ -349,35 +388,148 @@ class _CartScreenState extends State<CartScreen> {
 
     return Column(
       children: [
-        // Cart header
+        // Cart header with summary
         Container(
           padding: const EdgeInsets.all(16),
           color: Colors.white,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
             children: [
-              Text(
-                'Your Cart (${cartItems.length} ${cartItems.length == 1 ? 'item' : 'items'})',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Your Cart (${cartItems.length} ${cartItems.length == 1 ? 'item' : 'items'})',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: _isProcessing ? null : _clearCart,
+                    icon: Icon(
+                      Icons.delete_outline,
+                      color: _isProcessing ? Colors.grey : Colors.red.shade600,
+                      size: 18,
+                    ),
+                    label: Text(
+                      'Clear Cart',
+                      style: TextStyle(
+                        color: _isProcessing ? Colors.grey : Colors.red.shade600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              TextButton.icon(
-                onPressed: _isProcessing ? null : _clearCart,
-                icon: Icon(
-                  Icons.delete_outline,
-                  color: _isProcessing ? Colors.grey : Colors.red.shade600,
-                  size: 18,
-                ),
-                label: Text(
-                  'Clear Cart',
-                  style: TextStyle(
-                    color: _isProcessing ? Colors.grey : Colors.red.shade600,
+              // Add price summary here
+              if (_cartSummary['finalTotal']! > 0) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Subtotal (after discount):',
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            'BHD${_cartSummary['subtotal']!.toStringAsFixed(3)}',
+                            style: TextStyle(
+                              color: Colors.grey.shade800,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_cartSummary['totalSavings']! > 0) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Total Savings:',
+                              style: TextStyle(
+                                color: Colors.red.shade600,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              'BHD${_cartSummary['totalSavings']!.toStringAsFixed(3)}',
+                              style: TextStyle(
+                                color: Colors.red.shade600,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (_cartSummary['totalTax']! > 0) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Total Tax:',
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              'BHD${_cartSummary['totalTax']!.toStringAsFixed(3)}',
+                              style: TextStyle(
+                                color: Colors.grey.shade800,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 1,
+                        color: Colors.green.shade300,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Total Final Price:',
+                            style: TextStyle(
+                              color: Colors.green.shade800,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'BHD${_cartSummary['finalTotal']!.toStringAsFixed(3)}',
+                            style: TextStyle(
+                              color: Colors.green.shade800,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -448,8 +600,17 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _buildCartItem(Map<String, dynamic> item, int index) {
     final quantity = item['quantity'] as int? ?? 1;
-    final price = (item['price'] as num?)?.toDouble() ?? 0.0;
-    final itemTotal = price * quantity;
+    
+    // Use the helper method to get calculated prices
+    final prices = _calculateItemPrices(item);
+    final originalPrice = prices['originalPrice']!;
+    final discountedPrice = prices['discountedPrice']!;
+    final finalPriceWithTax = prices['finalPriceWithTax']!;
+    final itemFinalTotal = prices['itemFinalTotal']!;
+    final itemSavings = prices['itemSavings']!;
+    
+    final discount = (item['discount'] as num?)?.toDouble() ?? 0.0;
+    final tax = (item['tax'] as num?)?.toDouble() ?? 0.0;
 
     return Dismissible(
       key: Key(item['_id']?.toString() ?? item['productId']?.toString() ?? index.toString()),
@@ -522,13 +683,79 @@ class _CartScreenState extends State<CartScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'BHD${price.toStringAsFixed(2)} / ${item['unit']?.toString() ?? 'unit'}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
+                    
+                    // Price display with proper calculation
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Current price (after discount + tax)
+                        Row(
+                          children: [
+                            Text(
+                              'BHD${finalPriceWithTax.toStringAsFixed(3)} / ${item['unit']?.toString() ?? 'unit'}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.green.shade700,
+                              ),
+                            ),
+                            if (discount > 0) ...[
+                              const SizedBox(width: 8),
+                              Text(
+                                'BHD${originalPrice.toStringAsFixed(3)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade500,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        
+                        // Discount and tax info
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            if (discount > 0) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade100,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '${discount.toStringAsFixed(0)}% OFF',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.red.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            if (tax > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade100,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '+${tax.toStringAsFixed(0)}% Tax',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.blue.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
+                    
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -581,14 +808,29 @@ class _CartScreenState extends State<CartScreen> {
                             ],
                           ),
                         ),
-                        // Item total
-                        Text(
-                          'BHD${itemTotal.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade700,
-                          ),
+                        
+                        // Final item total with savings
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'BHD${itemFinalTotal.toStringAsFixed(3)}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade700,
+                              ),
+                            ),
+                            if (itemSavings > 0) ...[
+                              Text(
+                                'Save BHD${itemSavings.toStringAsFixed(3)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.red.shade600,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -616,58 +858,87 @@ class _CartScreenState extends State<CartScreen> {
         ],
       ),
       child: SafeArea(
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Price details
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+            if (_cartSummary['totalSavings']! > 0) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Total Price',
+                    'You Save',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey.shade600,
+                      color: Colors.red.shade600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   Text(
-                    'BHD${_totalPrice.toStringAsFixed(2)}',
+                    'BHD${_cartSummary['totalSavings']!.toStringAsFixed(3)}',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade800,
+                      color: Colors.red.shade600,
                     ),
                   ),
                 ],
               ),
-            ),
-            // Checkout button
-            ElevatedButton(
-              onPressed: _isProcessing || cartItems.isEmpty ? null : _checkout,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade700,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                disabledBackgroundColor: Colors.grey.shade400,
-              ),
-              child: _isProcessing
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
+              const SizedBox(height: 4),
+            ],
+            Row(
+              children: [
+                // Price details
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total (incl. tax)',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
                         ),
-                        const SizedBox(width: 8),
-                        const Text('Processing...'),
-                      ],
-                    )
-                  : const Text('Checkout'),
+                      ),
+                      Text(
+                        'BHD${_cartSummary['finalTotal']!.toStringAsFixed(3)}',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Checkout button
+                ElevatedButton(
+                  onPressed: _isProcessing || cartItems.isEmpty ? null : _checkout,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade700,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    disabledBackgroundColor: Colors.grey.shade400,
+                  ),
+                  child: _isProcessing
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text('Processing...'),
+                          ],
+                        )
+                      : const Text('Checkout'),
+                ),
+              ],
             ),
           ],
         ),

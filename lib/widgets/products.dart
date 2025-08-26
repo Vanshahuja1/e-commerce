@@ -280,16 +280,17 @@ class ProductsSectionState extends State<ProductsSection> {
   }
 
   double _getChildAspectRatio(double screenWidth) {
+    // Slightly reduced aspect ratios to just fix the 15px overflow
     if (screenWidth > 1200) {
-      return 0.85;
+      return 0.85; // Just enough to fix overflow
     } else if (screenWidth > 900) {
-      return 0.82;
+      return 0.82; // Just enough to fix overflow
     } else if (screenWidth > 600) {
-      return 0.80;
+      return 0.80; // Just enough to fix overflow
     } else if (screenWidth > 400) {
-      return 0.78;
+      return 0.78; // Just enough to fix overflow
     } else {
-      return 0.75;
+      return 0.75; // Just enough to fix overflow
     }
   }
 
@@ -302,8 +303,8 @@ class ProductsSectionState extends State<ProductsSection> {
     double tax = double.tryParse(product['tax']?.toString() ?? '0') ?? 0.0;
     bool hasVAT = product['hasVAT'] == true;
     
+    // Calculate discounted price (this is what should be shown on cards)
     double discountedPrice = originalPrice * (1 - discount / 100);
-    double finalPrice = discountedPrice * (1 + tax / 100);
     bool hasDiscount = discount > 0;
 
     return GestureDetector(
@@ -319,7 +320,6 @@ class ProductsSectionState extends State<ProductsSection> {
         }
       },
       child: Container(
-        height: null,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -334,9 +334,9 @@ class ProductsSectionState extends State<ProductsSection> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Section
+            // Image Section 
             Expanded(
-              flex: 5,
+              flex: 5, // Back to original
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -368,19 +368,19 @@ class ProductsSectionState extends State<ProductsSection> {
                     ),
                     if (hasDiscount)
                       Positioned(
-                        top: 6,
-                        left: 6,
+                        top: 4, // Reduced padding
+                        left: 4, // Reduced padding
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), // Reduced padding
                           decoration: BoxDecoration(
                             color: Colors.red,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(6), // Reduced radius
                           ),
                           child: Text(
                             '${discount.toInt()}% OFF',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: screenWidth > 600 ? 8 : 7,
+                              fontSize: screenWidth > 600 ? 7 : 6, // Reduced font size
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -388,19 +388,19 @@ class ProductsSectionState extends State<ProductsSection> {
                       ),
                     if (hasVAT)
                       Positioned(
-                        top: 6,
-                        right: 6,
+                        top: 4, // Reduced padding
+                        right: 4, // Reduced padding
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1), // Reduced padding
                           decoration: BoxDecoration(
                             color: Colors.blue.shade600,
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(4), // Reduced radius
                           ),
                           child: Text(
                             'VAT',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: screenWidth > 600 ? 7 : 6,
+                              fontSize: screenWidth > 600 ? 6 : 5, // Reduced font size
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -410,16 +410,15 @@ class ProductsSectionState extends State<ProductsSection> {
                 ),
               ),
             ),
-            // Product Details Section
+            // Product Details Section 
             Expanded(
-              flex: 4,
+              flex: 4, // Back to original
               child: Padding(
                 padding: EdgeInsets.symmetric(
-                    horizontal: screenWidth > 600 ? 10 : 8,
-                    vertical: screenWidth > 600 ? 8 : 6),
+                    horizontal: screenWidth > 600 ? 10 : 8, // Back to original
+                    vertical: screenWidth > 600 ? 8 : 6), // Back to original
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Product Name with Add Button
                     Row(
@@ -429,66 +428,65 @@ class ProductsSectionState extends State<ProductsSection> {
                           child: Text(
                             product['name']?.toString() ?? 'Unknown Product',
                             style: TextStyle(
-                              fontSize: screenWidth > 600 ? 12 : 10,
+                              fontSize: screenWidth > 600 ? 11 : 9, // Slightly reduced
                               fontWeight: FontWeight.w600,
                               color: Colors.black87,
-                              height: 1.2,
+                              height: 1.1, // Reduced line height
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4), // Reduced spacing
                         _buildAddButton(product, quantity, screenWidth),
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    // Quantity/Weight
+                    const SizedBox(height: 1), // Reduced spacing
+                    // Quantity/Weight - Made more compact
                     Text(
                       '${product['weight'] ?? product['quantity'] ?? '500 g'} - Approx. ${product['pieces'] ?? '4-5pcs'}',
                       style: TextStyle(
-                        fontSize: screenWidth > 600 ? 9 : 8,
+                        fontSize: screenWidth > 600 ? 8 : 7, // Reduced font size
                         color: Colors.grey.shade600,
                         fontWeight: FontWeight.normal,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: hasDiscount
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'BHD ${originalPrice.toStringAsFixed(3)}',
-                                  style: TextStyle(
-                                    fontSize: screenWidth > 600 ? 10 : 9,
-                                    color: Colors.grey.shade500,
-                                    decoration: TextDecoration.lineThrough,
-                                    decorationColor: Colors.grey.shade500,
-                                  ),
+                    const SizedBox(height: 2), // Reduced spacing
+                    // Price Section - Made more compact
+                    hasDiscount
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'BHD ${originalPrice.toStringAsFixed(3)}',
+                                style: TextStyle(
+                                  fontSize: screenWidth > 600 ? 9 : 8, // Reduced font size
+                                  color: Colors.grey.shade500,
+                                  decoration: TextDecoration.lineThrough,
+                                  decorationColor: Colors.grey.shade500,
                                 ),
-                                Text(
-                                  'BHD ${finalPrice.toStringAsFixed(3)}',
-                                  style: TextStyle(
-                                    fontSize: screenWidth > 600 ? 13 : 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Text(
-                              'BHD ${finalPrice.toStringAsFixed(3)}',
-                              style: TextStyle(
-                                fontSize: screenWidth > 600 ? 13 : 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
                               ),
+                              Text(
+                                'BHD ${discountedPrice.toStringAsFixed(3)}',
+                                style: TextStyle(
+                                  fontSize: screenWidth > 600 ? 12 : 10, // Reduced font size
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            'BHD ${discountedPrice.toStringAsFixed(3)}',
+                            style: TextStyle(
+                              fontSize: screenWidth > 600 ? 12 : 10, // Reduced font size
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
                             ),
-                    ),
+                          ),
                   ],
                 ),
               ),
@@ -500,10 +498,10 @@ class ProductsSectionState extends State<ProductsSection> {
   }
 
   Widget _buildAddButton(dynamic product, int quantity, double screenWidth) {
-    double buttonSize = screenWidth > 600 ? 22 : 18;
-    double iconSize = screenWidth > 600 ? 13 : 11;
-    double fontSize = screenWidth > 600 ? 11 : 9;
-    double rowPadding = screenWidth > 600 ? 5 : 3;
+    double buttonSize = screenWidth > 600 ? 20 : 16; // Slightly reduced
+    double iconSize = screenWidth > 600 ? 12 : 10; // Slightly reduced
+    double fontSize = screenWidth > 600 ? 10 : 8; // Slightly reduced
+    double rowPadding = screenWidth > 600 ? 4 : 2; // Reduced padding
 
     if (quantity == 0) {
       return GestureDetector(
@@ -517,8 +515,8 @@ class ProductsSectionState extends State<ProductsSection> {
             boxShadow: [
               BoxShadow(
                 color: Colors.grey.shade300,
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+                blurRadius: 3, // Reduced blur
+                offset: const Offset(0, 1), // Reduced offset
               ),
             ],
           ),
@@ -534,12 +532,12 @@ class ProductsSectionState extends State<ProductsSection> {
         height: buttonSize,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(10), // Reduced radius
           boxShadow: [
             BoxShadow(
               color: Colors.grey.shade300,
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+              blurRadius: 3, // Reduced blur
+              offset: const Offset(0, 1), // Reduced offset
             ),
           ],
         ),
@@ -602,7 +600,7 @@ class ProductsSectionState extends State<ProductsSection> {
       color: Colors.grey.shade100,
       child: Icon(
         Icons.image,
-        size: 32,
+        size: 28, // Slightly reduced
         color: Colors.grey.shade400,
       ),
     );

@@ -197,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleDiscountNavigation() {
-    // Navigate to discount/offers page
+    // Navigate to discount
     // You can customize this based on your needs
     if (!_isLoggedIn) {
       Navigator.pushNamed(context, '/login');
