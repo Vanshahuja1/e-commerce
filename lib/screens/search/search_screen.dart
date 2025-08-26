@@ -5,7 +5,7 @@ import '/services/cart_service.dart';
 import '/widgets/header.dart';
 import '/models/user_model.dart';
 import '/services/auth_service.dart';
-
+import '/widgets/footer.dart';
 class SearchScreen extends StatefulWidget {
   const SearchScreen({Key? key}) : super(key: key);
 
@@ -572,6 +572,15 @@ void didChangeDependencies() {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: Footer(
+        currentUser: _currentUser,
+        isLoggedIn: _currentUser != null,
+        currentIndex: 1, // Set to 1 for search/categories tab
+        onHomeTap: () => Navigator.pushReplacementNamed(context, '/home'),
+        onCategoriesTap: () {}, // Already on search/categories screen
+        onDiscountTap: () => Navigator.pushNamed(context, '/offers'),
+        onProfileTap: () => Navigator.pushNamed(context, '/profile'),
       ),
     );
   }

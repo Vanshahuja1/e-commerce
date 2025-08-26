@@ -56,7 +56,7 @@ class CategorySection extends StatelessWidget {
       'Melons': 'Fruits',
       'Fresh Fruit': 'Fruits',
       'Vegetables': 'Vegetables',
-      'Herbs & Lettuce': 'Vegetables',
+      'Herbs & Lettuce': 'Herbs & Lettuce',
       'Dried Fruit': 'Dried Fruit',
       // 'All' will be handled separately
     };

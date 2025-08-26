@@ -18,12 +18,19 @@ class _CartScreenState extends State<CartScreen> {
   int _cartItemCount = 0;
   double _totalPrice = 0;
   bool _isProcessing = false;
+  final TextEditingController _specialRequestsController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadUser();
     _loadCart();
+  }
+
+  @override
+  void dispose() {
+    _specialRequestsController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUser() async {
@@ -235,70 +242,67 @@ class _CartScreenState extends State<CartScreen> {
       arguments: {
         'amount': _totalPrice,
         'cartItems': cartItems,
+        'specialRequests': _specialRequestsController.text,
       },
     );
   }
 
-
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: Colors.grey.shade50,
-  appBar: AppBar(
-  backgroundColor: Colors.white,
-  elevation: 1,
-  leading: IconButton(
-    icon: const Icon(Icons.arrow_back, color: Colors.black),
-    onPressed: () => Navigator.pop(context),
-  ),
-  title: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: const [
-      Text(
-        "My Cart",
-        style: TextStyle(
-          color: Colors.black,
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 1,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
         ),
-      ),
-      SizedBox(height: 2),
-      Text(
-        "Tazaj Fruit & Vegetables",
-        style: TextStyle(
-          color: Colors.grey,
-          fontSize: 12, // small grey text
-        ),
-      ),
-    ],
-  ),
-),
-
-    body: isLoading
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  color: Colors.green.shade700,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Loading your cart...',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              "My Cart",
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
-          )
-        : _buildCartContent(),
-    bottomNavigationBar: _buildCheckoutBar(),
-  );
-}
-
-  // --- rest of your code (_buildCartContent, _buildCartItem, _buildCheckoutBar) remains unchanged ---
+            SizedBox(height: 2),
+            Text(
+              "Tazaj Fruit & Vegetables",
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12, // small grey text
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    color: Colors.green.shade700,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Loading your cart...',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : _buildCartContent(),
+      bottomNavigationBar: _buildCheckoutBar(),
+    );
+  }
 
   Widget _buildCartContent() {
     if (cartItems.isEmpty) {
@@ -363,33 +367,78 @@ Widget build(BuildContext context) {
               TextButton.icon(
                 onPressed: _isProcessing ? null : _clearCart,
                 icon: Icon(
-                  Icons.delete_outline, 
-                  color: _isProcessing ? Colors.grey : Colors.red.shade600, 
-                  size: 18
+                  Icons.delete_outline,
+                  color: _isProcessing ? Colors.grey : Colors.red.shade600,
+                  size: 18,
                 ),
                 label: Text(
                   'Clear Cart',
                   style: TextStyle(
-                    color: _isProcessing ? Colors.grey : Colors.red.shade600
+                    color: _isProcessing ? Colors.grey : Colors.red.shade600,
                   ),
                 ),
               ),
             ],
           ),
         ),
-        
-        // Cart items
+        // Cart items and special requests
         Expanded(
           child: RefreshIndicator(
             onRefresh: _loadCart,
             color: Colors.green.shade700,
-            child: ListView.builder(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
-              itemCount: cartItems.length,
-              itemBuilder: (context, index) {
-                final item = cartItems[index];
-                return _buildCartItem(item, index);
-              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Cart items list
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: cartItems.length,
+                    itemBuilder: (context, index) {
+                      final item = cartItems[index];
+                      return _buildCartItem(item, index);
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Special requests',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _specialRequestsController,
+                    maxLines: 1,
+                    decoration: InputDecoration(
+                      hintText: 'Any Special requests ?',
+                      hintStyle: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 14,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.green.shade700),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -416,7 +465,7 @@ Widget build(BuildContext context) {
       ),
       onDismissed: (direction) => _removeItem(index),
       child: Card(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: 8),
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -457,7 +506,6 @@ Widget build(BuildContext context) {
                       ),
               ),
               const SizedBox(width: 16),
-              
               // Product Details
               Expanded(
                 child: Column(
@@ -506,7 +554,6 @@ Widget build(BuildContext context) {
                                   ),
                                 ),
                               ),
-                              
                               // Quantity display
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -518,7 +565,6 @@ Widget build(BuildContext context) {
                                   ),
                                 ),
                               ),
-                              
                               // Increase button
                               InkWell(
                                 onTap: _isProcessing ? null : () => _updateQuantity(index, quantity + 1),
@@ -535,7 +581,6 @@ Widget build(BuildContext context) {
                             ],
                           ),
                         ),
-                        
                         // Item total
                         Text(
                           'BHD${itemTotal.toStringAsFixed(2)}',
@@ -597,7 +642,6 @@ Widget build(BuildContext context) {
                 ],
               ),
             ),
-            
             // Checkout button
             ElevatedButton(
               onPressed: _isProcessing || cartItems.isEmpty ? null : _checkout,

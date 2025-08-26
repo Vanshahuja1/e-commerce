@@ -3,7 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'dart:convert';
-
+final TextEditingController flatHouseController = TextEditingController();
+final TextEditingController floorController = TextEditingController();
+final TextEditingController areaController = TextEditingController();
+final TextEditingController landmarkController = TextEditingController();
+final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({Key? key}) : super(key: key);
 
@@ -25,18 +29,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
   int selectedAddressIndex = -1;
   String selectedPaymentMethod = 'cod';
   bool isAddingNewAddress = false;
+  bool isEditingAddress = false;
   bool isLoading = true;
   bool isSavingAddress = false;
   bool isProcessingPayment = false;
-  String? _token; // This will hold the authentication token
+  String? _token;
+  String? editingAddressId;
   
   // Cart data from arguments
   double totalAmount = 0.0;
   List<dynamic> cartItems = [];
   double deliveryFee = 0.0;
-  double taxRate = 0.0; // 5% tax
+  double taxRate = 0.0;
 
-  // Controllers for new address form
+  // Controllers for address form
   final TextEditingController nameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
@@ -54,28 +60,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Get arguments first, then initialize everything else
     _getCartArguments();
-    // Only fetch addresses if token hasn't been fetched yet
     if (_token == null) {
       _initializeAndFetchAddresses();
     }
   }
 
-  // Get cart arguments passed from previous screen
   void _getCartArguments() {
-    print('Getting cart arguments...');
-    
     final arguments = ModalRoute.of(context)?.settings.arguments;
-    print('Raw arguments: $arguments');
-    print('Arguments type: ${arguments.runtimeType}');
     
     if (arguments != null && arguments is Map<String, dynamic>) {
-      print('Arguments keys: ${arguments.keys}');
-      
-      // Handle amount
       final amountValue = arguments['amount'];
-      print('Amount value: $amountValue, type: ${amountValue.runtimeType}');
       
       double parsedAmount = 0.0;
       if (amountValue is double) {
@@ -88,15 +83,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
         parsedAmount = amountValue.toDouble();
       }
       
-      // Handle cart items
       final itemsValue = arguments['cartItems'];
-      print('CartItems value: $itemsValue, type: ${itemsValue.runtimeType}');
-      
       List<dynamic> parsedItems = [];
       if (itemsValue is List) {
         parsedItems = itemsValue;
       } else if (itemsValue != null) {
-        // If it's not a list but not null, try to wrap it
         parsedItems = [itemsValue];
       }
       
@@ -104,15 +95,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         totalAmount = parsedAmount;
         cartItems = parsedItems;
       });
-      
-      print('Final totalAmount: $totalAmount');
-      print('Final cartItems length: ${cartItems.length}');
-      print('CartItems content: $cartItems');
     } else {
-      print('No arguments found or invalid format');
-      print('Arguments is null: ${arguments == null}');
-      print('Arguments type: ${arguments.runtimeType}');
-      
       setState(() {
         totalAmount = 0.0;
         cartItems = [];
@@ -120,7 +103,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
-  // Initialize Razorpay
   void _initializeRazorpay() {
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
@@ -128,20 +110,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
 
-  // Initialize token and fetch addresses
   Future<void> _initializeAndFetchAddresses() async {
     await _getAuthToken();
     await _fetchAddresses();
   }
 
-  // Get authentication token from SharedPreferences
   Future<void> _getAuthToken() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       setState(() {
         _token = prefs.getString('auth_token');
       });
-      print('Auth Token fetched: $_token'); // Add this line
       
       if (_token == null || _token!.isEmpty) {
         _showErrorSnackBar('Authentication token not found. Please login again.');
@@ -152,37 +131,26 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   @override
-  void dispose() {
-    nameController.dispose();
-    phoneController.dispose();
-    addressController.dispose();
-    titleController.dispose();
-    pincodeController.dispose();
-    cityController.dispose();
-    stateController.dispose();
-    _razorpay.clear();
-    super.dispose();
-  }
+void dispose() {
+  nameController.dispose();
+  phoneController.dispose();
+  addressController.dispose();
+  titleController.dispose();
+  pincodeController.clear();
+  cityController.dispose();
+  stateController.dispose();
+  flatHouseController.dispose();  // ADD THIS
+  floorController.dispose();      // ADD THIS
+  areaController.dispose();       // ADD THIS
+  landmarkController.dispose();   // ADD THIS
+  _razorpay.clear();
+  super.dispose();
+}
 
-  // Calculate totals
   double get subtotal => totalAmount;
   double get taxAmount => subtotal * taxRate;
   double get finalTotal => subtotal + deliveryFee + taxAmount;
 
-  // Debug method
-  void _debugPrintValues() {
-    print('=== PAYMENT DEBUG INFO ===');
-    print('totalAmount: $totalAmount');
-    print('subtotal: $subtotal');
-    print('deliveryFee: $deliveryFee');
-    print('taxAmount: $taxAmount');
-    print('finalTotal: $finalTotal');
-    print('cartItems count: ${cartItems.length}');
-    print('cartItems: $cartItems');
-    print('========================');
-  }
-
-  // Fetch addresses from backend
   Future<void> _fetchAddresses() async {
     try {
       setState(() {
@@ -208,7 +176,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         setState(() {
           savedAddresses = addressList
               .map((json) => Address.fromJson(json))
-              .take(3)
               .toList();
           isLoading = false;
           
@@ -229,67 +196,54 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
-  // Save new address to backend
-  Future<void> _saveAddress() async {
-    if (!_validateAddressForm()) return;
+  void _saveAddress() async {
+    if (!_validateAddressForm()) {
+      return;
+    }
 
-    try {
-      setState(() {
-        isSavingAddress = true;
-      });
+    setState(() {
+      isSavingAddress = true;
+    });
 
-      if (_token == null || _token!.isEmpty) {
-        throw Exception('Authentication token not available');
-      }
+    // Simulate API call delay
+    await Future.delayed(const Duration(seconds: 1));
 
-      final addressData = {
-        'title': titleController.text.trim(),
-        'name': nameController.text.trim(),
-        'phone': phoneController.text.trim(),
-        'address': addressController.text.trim(),
-        'city': cityController.text.trim(),
-        'state': stateController.text.trim(),
-        'pincode': pincodeController.text.trim(),
-      };
-
-      final response = await http.post(
-        Uri.parse('$baseUrl$addressEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_token',
-        },
-        body: json.encode(addressData),
+    setState(() {
+      Address newAddress = Address(
+        id: isEditingAddress ? editingAddressId! : DateTime.now().millisecondsSinceEpoch.toString(),
+        title: titleController.text.trim(),
+        name: nameController.text.trim(),
+        phone: phoneController.text.trim(),
+        address: addressController.text.trim(),
+        city: cityController.text.trim(),
+        state: stateController.text.trim(),
+        pincode: pincodeController.text.trim(),
       );
 
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        final Address newAddress = Address.fromJson(responseData['address']);
-        
-        setState(() {
-          if (savedAddresses.length < 3) {
-            savedAddresses.add(newAddress);
-            selectedAddressIndex = savedAddresses.length - 1;
-          }
-          isSavingAddress = false;
-          isAddingNewAddress = false;
-        });
-
-        _clearAddressForm();
-        _showSuccessSnackBar('Address saved successfully!');
-      } else if (response.statusCode == 401) {
-        throw Exception('Unauthorized: Please login again');
+      if (isEditingAddress) {
+        // Update the existing address in the list
+        int index = savedAddresses.indexWhere((addr) => addr.id == editingAddressId);
+        if (index != -1) {
+          savedAddresses[index] = newAddress;
+          selectedAddressIndex = index;
+        }
       } else {
-        throw Exception('Failed to save address: ${response.statusCode}');
+        // Add new address
+        savedAddresses.add(newAddress);
+        selectedAddressIndex = savedAddresses.length - 1;
       }
-    } catch (e) {
-      setState(() {
-        isSavingAddress = false;
-      });
-      _showErrorSnackBar('Failed to save address: ${e.toString()}');
-    }
+      isSavingAddress = false;
+      isAddingNewAddress = false;
+      isEditingAddress = false;
+      editingAddressId = null;
+      
+      _clearAddressForm();
+    });
+
+    _showSuccessSnackBar(isEditingAddress ? 'Address updated successfully' : 'Address added successfully');
+    Navigator.pop(context);
   }
 
-  // Delete address from backend
   Future<void> _deleteAddress(String addressId, int index) async {
     try {
       if (_token == null || _token!.isEmpty) {
@@ -324,7 +278,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
-  // Razorpay Payment Handlers
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
     setState(() {
       isProcessingPayment = false;
@@ -347,7 +300,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     _showSuccessSnackBar('External wallet selected: ${response.walletName}');
   }
 
-  // Create Razorpay order and initiate payment
   Future<void> _initiateRazorpayPayment() async {
     try {
       setState(() {
@@ -358,14 +310,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
       
       if (orderData != null) {
         var options = {
-          'key': 'rzp_live_vegmIuWT1fULsb', // <--- REPLACE THIS WITH YOUR ACTUAL PUBLIC RAZORPAY KEY ID (e.g., rzp_test_xxxxxxxxxxxxxx)
+          'key': 'rzp_live_vegmIuWT1fULsb',
           'amount': (finalTotal * 100).toInt(),
           'name': 'Your App Name',
           'description': 'Order Payment',
           'order_id': orderData['id'],
           'prefill': {
             'contact': savedAddresses[selectedAddressIndex].phone,
-            'email': 'customer@example.com' // You might want to fetch the actual user email
+            'email': 'customer@example.com'
           },
           'theme': {
             'color': '#4CAF50'
@@ -387,7 +339,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
-  // Create Razorpay order on backend
   Future<Map<String, dynamic>?> _createRazorpayOrder() async {
     try {
       final requestBody = json.encode({
@@ -395,7 +346,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         'currency': 'INR',
         'receipt': 'order_${DateTime.now().millisecondsSinceEpoch}',
       });
-      print('Creating Razorpay order request body: $requestBody'); // Add this line
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/create-razorpay-order'),
@@ -403,11 +353,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_token',
         },
-        body: requestBody, // Use the variable
+        body: requestBody,
       );
-
-      print('Razorpay order creation response status: ${response.statusCode}'); // Add this line
-      print('Razorpay order creation response body: ${response.body}'); // Add this line
 
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -417,13 +364,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
         return null;
       }
     } catch (e) {
-      print('Error creating Razorpay order: $e');
       _showErrorSnackBar('Error creating Razorpay order: ${e.toString()}');
       return null;
     }
   }
 
-  // Process successful order
   Future<void> _processSuccessfulOrder(String? paymentId, String? orderId) async {
     try {
       final orderData = {
@@ -437,7 +382,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         'taxAmount': taxAmount,
         'totalAmount': finalTotal,
       };
-      print('Processing successful order request body: $orderData'); // Add this line
 
       final response = await http.post(
         Uri.parse('$baseUrl$orderEndpoint'),
@@ -447,9 +391,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         },
         body: json.encode(orderData),
       );
-
-      print('Process successful order response status: ${response.statusCode}'); // Add this line
-      print('Process successful order response body: ${response.body}'); // Add this line
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         Navigator.pushReplacementNamed(
@@ -494,14 +435,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return true;
   }
 
-  void _clearAddressForm() {
-    titleController.clear();
-    nameController.clear();
-    phoneController.clear();
-    addressController.clear();
-    cityController.clear();
-    stateController.clear();
-    pincodeController.clear();
+
+
+  void _populateAddressForm(Address address) {
+    titleController.text = address.title;
+    nameController.text = address.name;
+    phoneController.text = address.phone;
+    addressController.text = address.address;
+    cityController.text = address.city;
+    stateController.text = address.state;
+    pincodeController.text = address.pincode;
   }
 
   void _showErrorSnackBar(String message) {
@@ -523,17 +466,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
         content: Text(message),
         backgroundColor: Colors.green,
         duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    _debugPrintValues();
-    
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
     
@@ -560,17 +498,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
             )
           : Column(
               children: [
-                // Debug info (remove in production)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(8),
-                  color: Colors.yellow[100],
-                  child: Text(
-                    'DEBUG: Total: BHD${totalAmount.toStringAsFixed(2)}, Items: ${cartItems.length}',
-                    style: const TextStyle(fontSize: 12),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: EdgeInsets.all(isTablet ? 24.0 : 16.0),
@@ -594,10 +521,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
     );
   }
-
-  // Rest of the widget methods remain the same...
-  // (Include all the other widget building methods from your original code)
-  // I'll keep the rest as they are working fine
 
   Widget _buildCartSummary() {
     return Container(
@@ -741,125 +664,132 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          ...List.generate(3, (index) => _buildAddressSlot(index)),
-          if (isAddingNewAddress) _buildNewAddressForm(),
+          
+          // Show selected address or add new address option
+          if (savedAddresses.isNotEmpty && !isAddingNewAddress && !isEditingAddress)
+            _buildSelectedAddress()
+          else if (savedAddresses.isEmpty && !isAddingNewAddress && !isEditingAddress)
+            _buildAddAddressCard()
+          
+          // Show address form for adding/editing
+          else if (isAddingNewAddress || isEditingAddress)
+            _buildAddressForm(),
         ],
       ),
     );
   }
 
-  Widget _buildAddressSlot(int index) {
-    bool hasAddress = index < savedAddresses.length;
-    bool isSelected = hasAddress && selectedAddressIndex == index;
+  Widget _buildSelectedAddress() {
+    if (selectedAddressIndex == -1 || 
+        selectedAddressIndex >= savedAddresses.length ||
+        savedAddresses.isEmpty) {
+      return _buildAddAddressCard();
+    }
+    
+    Address address = savedAddresses[selectedAddressIndex];
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isSelected ? Colors.green[600]! : Colors.grey[300]!,
-          width: isSelected ? 2 : 1,
-        ),
-        color: isSelected ? Colors.green[50] : Colors.white,
+        border: Border.all(color: Colors.green[600]!, width: 2),
+        color: Colors.green[50],
       ),
-      child: hasAddress ? _buildSavedAddress(index) : _buildAddAddressCard(index),
-    );
-  }
-
-  Widget _buildSavedAddress(int index) {
-    Address address = savedAddresses[index];
-    bool isSelected = selectedAddressIndex == index;
-
-    return InkWell(
-      onTap: () {
-        setState(() {
-          selectedAddressIndex = index;
-        });
-      },
-      borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Radio<int>(
-              value: index,
-              groupValue: selectedAddressIndex,
-              onChanged: (value) {
-                setState(() {
-                  selectedAddressIndex = value!;
-                });
-              },
-              activeColor: Colors.green[600],
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green[600],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          address.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      PopupMenuButton<String>(
-                        onSelected: (value) {
-                          if (value == 'delete') {
-                            _showDeleteConfirmation(address.id, index);
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete, color: Colors.red, size: 18),
-                                SizedBox(width: 8),
-                                Text('Delete'),
-                              ],
-                            ),
-                          ),
-                        ],
-                        child: Icon(Icons.more_vert, color: Colors.grey[600]),
-                      ),
-                    ],
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green[600],
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    address.name,
+                  child: Text(
+                    address.title,
                     style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    address.fullAddress,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
+                ),
+                const Spacer(),
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      setState(() {
+                        isEditingAddress = true;
+                        editingAddressId = address.id;
+                      });
+                      _populateAddressForm(address);
+                    } else if (value == 'delete') {
+                      _showDeleteConfirmation(address.id, selectedAddressIndex);
+                    } else if (value == 'change') {
+                      _showAddressSelectionDialog();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, color: Colors.blue, size: 18),
+                          SizedBox(width: 8),
+                          Text('Edit'),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    address.phone,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
+                    if (savedAddresses.length > 1)
+                      const PopupMenuItem(
+                        value: 'change',
+                        child: Row(
+                          children: [
+                            Icon(Icons.swap_horiz, color: Colors.orange, size: 18),
+                            SizedBox(width: 8),
+                            Text('Change Address'),
+                          ],
+                        ),
+                      ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, color: Colors.red, size: 18),
+                          SizedBox(width: 8),
+                          Text('Delete'),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                  child: Icon(Icons.more_vert, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              address.name,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              address.fullAddress,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              address.phone,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
               ),
             ),
           ],
@@ -868,18 +798,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildAddAddressCard(int index) {
+  Widget _buildAddAddressCard() {
     return InkWell(
       onTap: () {
-        if (savedAddresses.length < 3) {
-          setState(() {
-            isAddingNewAddress = true;
-          });
-        }
+        setState(() {
+          isAddingNewAddress = true;
+        });
       },
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+          color: Colors.white,
+        ),
         child: Column(
           children: [
             Icon(
@@ -889,7 +822,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Add New Address',
+              'Add Delivery Address',
               style: TextStyle(
                 color: Colors.green[600],
                 fontWeight: FontWeight.bold,
@@ -898,7 +831,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Tap to add delivery address',
+              'Tap to add your delivery address',
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 12,
@@ -910,139 +843,418 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildNewAddressForm() {
-    return Container(
-      margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.green[300]!),
-        borderRadius: BorderRadius.circular(8),
-        color: Colors.white,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Add New Address',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green[700],
-                ),
+Widget _buildAddressForm() {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      border: Border.all(color: Colors.green[300]!),
+      borderRadius: BorderRadius.circular(8),
+      color: Colors.white,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              isEditingAddress ? 'Edit Address' : 'Add New Address',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.green[700],
               ),
-              const Spacer(),
-              IconButton(
+            ),
+            const Spacer(),
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  isAddingNewAddress = false;
+                  isEditingAddress = false;
+                  editingAddressId = null;
+                });
+                _clearAddressForm();
+              },
+              icon: const Icon(Icons.close),
+              color: Colors.grey[600],
+              iconSize: 20,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        
+        // Full Name
+        _buildTextField(
+          nameController, 
+          '*Full Name', 
+          Icons.person,
+          isRequired: true
+        ),
+        const SizedBox(height: 12),
+        
+        // Phone Number
+        _buildTextField(
+          phoneController, 
+          '*Phone Number', 
+          Icons.phone, 
+          keyboardType: TextInputType.phone,
+          isRequired: true
+        ),
+        const SizedBox(height: 12),
+        
+        // Flat/House No/Building Name
+        _buildTextField(
+          flatHouseController, 
+          '*Flat/House No/Building Name', 
+          Icons.home,
+          isRequired: true
+        ),
+        const SizedBox(height: 12),
+        
+        // Floor (Optional)
+        _buildTextField(
+          floorController, 
+          'Floor (Optional)', 
+          Icons.layers,
+          isRequired: false
+        ),
+        const SizedBox(height: 12),
+        
+        // Area/Sector/Locality
+        _buildTextField(
+          areaController, 
+          '*Area/Sector/Locality', 
+          Icons.location_on,
+          isRequired: true
+        ),
+        const SizedBox(height: 12),
+        
+        // Nearby Landmark
+        _buildTextField(
+          landmarkController, 
+          '*Nearby Landmark', 
+          Icons.place,
+          isRequired: true
+        ),
+        const SizedBox(height: 12),
+        
+        // Complete Address
+        _buildTextField(
+          addressController, 
+          '*Complete Address (Min 25 characters)', 
+          Icons.home_outlined, 
+          maxLines: 3,
+          isRequired: true,
+          minLength: 25
+        ),
+        const SizedBox(height: 12),
+        
+        // City and State Row
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField(
+                cityController, 
+                '*City', 
+                Icons.location_city,
+                isRequired: true
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildTextField(
+                stateController, 
+                '*State', 
+                Icons.map,
+                isRequired: true
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        
+        // Pincode
+        _buildTextField(
+          pincodeController, 
+          '*Pincode', 
+          Icons.pin_drop, 
+          keyboardType: TextInputType.number,
+          isRequired: true
+        ),
+        const SizedBox(height: 20),
+        
+        // Action Buttons
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
                 onPressed: () {
                   setState(() {
                     isAddingNewAddress = false;
+                    isEditingAddress = false;
+                    editingAddressId = null;
                   });
                   _clearAddressForm();
                 },
-                icon: const Icon(Icons.close),
-                color: Colors.grey[600],
-                iconSize: 20,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildTextField(titleController, 'Address Title (Home, Office, etc.)', Icons.label),
-          const SizedBox(height: 12),
-          _buildTextField(nameController, 'Full Name', Icons.person),
-          const SizedBox(height: 12),
-          _buildTextField(phoneController, 'Phone Number', Icons.phone, keyboardType: TextInputType.phone),
-          const SizedBox(height: 12),
-          _buildTextField(addressController, 'Complete Address', Icons.home, maxLines: 2),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(cityController, 'City', Icons.location_city),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildTextField(stateController, 'State', Icons.map),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildTextField(pincodeController, 'Pincode', Icons.pin_drop, keyboardType: TextInputType.number),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    setState(() {
-                      isAddingNewAddress = false;
-                    });
-                    _clearAddressForm();
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.green[600]!),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(color: Colors.green[600]),
-                  ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.green[600]!),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.green[600]),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: isSavingAddress ? null : _saveAddress,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[600],
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: isSavingAddress
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Save Address',
-                          style: TextStyle(color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: isSavingAddress ? null : _saveAddress,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[600],
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: isSavingAddress
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
                         ),
-                ),
+                      )
+                    : Text(
+                        isEditingAddress ? 'Update Address' : 'Save Address',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12, // Smaller font size as requested
+                        ),
+                      ),
               ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label,
-    IconData icon, {
-    TextInputType keyboardType = TextInputType.text,
-    int maxLines = 1,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: Colors.green[600]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.green[600]!),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+Widget _buildTextField(
+  TextEditingController controller,
+  String label,
+  IconData icon, {
+  TextInputType keyboardType = TextInputType.text,
+  int maxLines = 1,
+  bool isRequired = false,
+  int? minLength,
+}) {
+  return TextFormField(
+    controller: controller,
+    keyboardType: keyboardType,
+    maxLines: maxLines,
+    decoration: InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: Colors.green[600]),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.grey[300]!),
       ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.green[600]!),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.red[600]!),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+    ),
+    validator: (value) {
+      String trimmedValue = value?.trim() ?? '';
+      
+      // Required field validation
+      if (isRequired && trimmedValue.isEmpty) {
+        return 'This field is required';
+      }
+      
+      // Skip further validation if field is optional and empty
+      if (!isRequired && trimmedValue.isEmpty) {
+        return null;
+      }
+      
+      // Minimum length validation
+      if (minLength != null && trimmedValue.length < minLength) {
+        return 'Minimum $minLength characters required';
+      }
+      
+      // General minimum length (at least 2 characters for all required fields except phone/pincode)
+      if (isRequired && controller != phoneController && controller != pincodeController) {
+        if (trimmedValue.length < 2) {
+          return 'Please enter at least 2 characters';
+        }
+      }
+      
+      // Phone number validation
+      if (controller == phoneController && trimmedValue.isNotEmpty) {
+        if (!RegExp(r'^[0-9]{10}$').hasMatch(trimmedValue)) {
+          return 'Enter a valid 10-digit phone number';
+        }
+      }
+      
+      // Pincode validation
+      if (controller == pincodeController && trimmedValue.isNotEmpty) {
+        if (!RegExp(r'^[0-9]{6}$').hasMatch(trimmedValue)) {
+          return 'Enter a valid 6-digit pincode';
+        }
+      }
+      
+      // Name validation (only letters and spaces)
+      if (controller == nameController && trimmedValue.isNotEmpty) {
+        if (!RegExp(r'^[a-zA-Z\s]{3,}$').hasMatch(trimmedValue)) {
+          return 'Enter a valid name ';
+        }
+      }
+      
+      // City validation (only letters and spaces)
+      if (controller == cityController && trimmedValue.isNotEmpty) {
+        if (!RegExp(r'^[a-zA-Z\s]{3,}$').hasMatch(trimmedValue)) {
+          return 'Enter a valid city name ';
+        }
+      }
+      
+      // State validation (only letters and spaces)
+      if (controller == stateController && trimmedValue.isNotEmpty) {
+        if (!RegExp(r'^[a-zA-Z\s]{3,}$').hasMatch(trimmedValue)) {
+          return 'Enter a valid state name';
+        }
+      }
+      
+      // Complete address special validation
+      if (controller == addressController && trimmedValue.isNotEmpty) {
+        if (trimmedValue.length < 25) {
+          return 'Enter complete address ';
+        }
+        // Check if it's not just repeated characters or spaces
+        String cleanAddress = trimmedValue.replaceAll(RegExp(r'\s+'), ' ');
+        if (cleanAddress.length < 25) {
+          return 'Enter complete address (minimum 25 characters)';
+        }
+      }
+      
+      // Flat/House validation (alphanumeric allowed)
+      if (controller == flatHouseController && trimmedValue.isNotEmpty) {
+        if (!RegExp(r'^[a-zA-Z0-9\s\-\/]{2,}$').hasMatch(trimmedValue)) {
+          return 'Enter valid flat/house details';
+        }
+      }
+      
+      // Area/Sector/Locality validation
+      if (controller == areaController && trimmedValue.isNotEmpty) {
+        if (!RegExp(r'^[a-zA-Z0-9\s\-]{2,}$').hasMatch(trimmedValue)) {
+          return 'Enter valid area/sector ';
+        }
+      }
+      
+      // Landmark validation
+      if (controller == landmarkController && trimmedValue.isNotEmpty) {
+        if (trimmedValue.length < 3) {
+          return 'Enter valid landmark ';
+        }
+      }
+      
+      // Floor validation (optional, but if entered should be valid)
+      if (controller == floorController && trimmedValue.isNotEmpty) {
+        if (!RegExp(r'^[a-zA-Z0-9\s]{1,}$').hasMatch(trimmedValue)) {
+          return 'Enter valid floor details';
+        }
+      }
+      
+      return null;
+    },
+  );
+}
+// Updated save address method with validation
+// Updated clear form method
+void _clearAddressForm() {
+  titleController.clear();
+  nameController.clear();
+  phoneController.clear();
+  flatHouseController.clear();
+  floorController.clear();
+  areaController.clear();
+  landmarkController.clear();
+  addressController.clear();
+  cityController.clear();
+  stateController.clear();
+  pincodeController.clear();
+}
+  void _showAddressSelectionDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Address'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: savedAddresses.length,
+              itemBuilder: (context, index) {
+                Address address = savedAddresses[index];
+                bool isSelected = selectedAddressIndex == index;
+                
+                return RadioListTile<int>(
+                  value: index,
+                  groupValue: selectedAddressIndex,
+                  onChanged: (value) {
+                    setState(() {
+                      selectedAddressIndex = value!;
+                    });
+                    Navigator.pop(context);
+                  },
+                  title: Text(address.name),
+                  subtitle: Text('${address.title}\n${address.fullAddress}'),
+                  secondary: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.green[600] : Colors.grey[400],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      address.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  activeColor: Colors.green[600],
+                  isThreeLine: true,
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                setState(() {
+                  isAddingNewAddress = true;
+                });
+              },
+              child: Text('Add New', style: TextStyle(color: Colors.green[600])),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1267,7 +1479,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildBottomSection() {
-    bool canProceed = selectedAddressIndex >= 0 && selectedAddressIndex < savedAddresses.length;
+    bool canProceed = savedAddresses.isNotEmpty && 
+                     selectedAddressIndex >= 0 && 
+                     selectedAddressIndex < savedAddresses.length;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1296,12 +1510,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning, color: Colors.orange[600], size: 20),
-                    const SizedBox(width: 8),
+                    Icon(Icons.warning, color: Colors.orange[600], size: 15),
+                    const SizedBox(width: 4),
                     const Expanded(
                       child: Text(
                         'Please select a delivery address to continue',
-                        style: TextStyle(fontSize: 14),
+                        style: TextStyle(fontSize: 10),
                       ),
                     ),
                   ],
@@ -1454,7 +1668,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 }
 
-// Address model class remains the same
+// Address model class
 class Address {
   final String id;
   final String title;

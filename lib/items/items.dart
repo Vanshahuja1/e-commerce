@@ -30,51 +30,21 @@ class GroceryItems {
     'Lettuce'     : 'https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?w=400&h=400&fit=crop',
     'Beetroot'    : 'https://images.unsplash.com/photo-1570197788417-0e82375c9371?w=400&h=400&fit=crop', // Fixed: actual beetroot
 
-    // Dairy Products
-    'Milk'   : 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&h=400&fit=crop',
-    'Cheese' : 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop',
-    'Butter' : 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=400&h=400&fit=crop',
-    'Yogurt' : 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400&h=400&fit=crop', // Fixed: actual yogurt
-    'Paneer' : 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400&h=400&fit=crop', // Fixed: actual paneer/cottage cheese
-    'Cream'  : 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=400&h=400&fit=crop', // Fixed: actual cream
-
-    // Grains & Cereals
-    'Rice'        : 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=400&fit=crop',
-    'Wheat Flour' : 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&h=400&fit=crop',
-    'Oats'        : 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&h=400&fit=crop', // Fixed: actual oats
-    'Quinoa'      : 'https://images.unsplash.com/photo-1586444248902-2f64eddc13df?w=400&h=400&fit=crop', // Fixed: actual quinoa
-    'Barley'      : 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&h=400&fit=crop',
-
+   
     // Pulses & Legumes
     'Lentils'     : 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=400&h=400&fit=crop',
     'Chickpeas'   : 'https://images.unsplash.com/photo-1610648659005-89bbc2020b80?w=400&h=400&fit=crop', // Fixed: actual chickpeas
     'Black Beans' : 'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=400&h=400&fit=crop', // Fixed: actual black beans
     'Kidney Beans': 'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=400&h=400&fit=crop', // Fixed: actual kidney beans
 
-    // Spices & Herbs
-    'Turmeric Powder'   : 'https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=400&h=400&fit=crop', // Fixed: actual turmeric powder
-    'Red Chili Powder'  : 'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=400&h=400&fit=crop', // Fixed: actual red chili powder
-    'Cumin Seeds'       : 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=400&h=400&fit=crop', // Fixed: actual cumin seeds
-    'Coriander Seeds'   : 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=400&h=400&fit=crop',
-    'Black Pepper'      : 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop', // Fixed: actual black pepper
-    'Garam Masala'      : 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=400&h=400&fit=crop',
-
-    // Cooking Oils
-    'Sunflower Oil': 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&h=400&fit=crop',
-    'Olive Oil'    : 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&h=400&fit=crop',
-    'Coconut Oil'  : 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&h=400&fit=crop',
-    'Mustard Oil'  : 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&h=400&fit=crop',
-
+   
+   
     // Beverages
     'Tea'        : 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=400&h=400&fit=crop',
     'Coffee'     : 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=400&fit=crop',
     'Fruit Juice': 'https://images.unsplash.com/photo-1610970881699-44a5587cabec?w=400&h=400&fit=crop',
 
-    // Snacks & Processed
-    'Biscuits'    : 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=400&fit=crop',
-    'Chips'       : 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=400&h=400&fit=crop',
-    'Nuts'        : 'https://images.unsplash.com/photo-1599599810769-bcde5a160d32?w=400&h=400&fit=crop', // Fixed: actual mixed nuts
-    'Dried Fruits': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop', // Fixed: actual dried fruits
+       'Dried Fruit': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop', // Fixed: actual dried fruits
 
     // Condiments & Sauces
     'Tomato Sauce': 'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=400&h=400&fit=crop', // Fixed: actual tomato sauce

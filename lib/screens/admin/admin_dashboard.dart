@@ -1579,7 +1579,7 @@ print('Add product response: ${res.body}');
                                   hintText: '0.00',
                                   hintStyle:
                                       const TextStyle(color: Colors.grey),
-                                  prefixText: '\$ ',
+                                  prefixText: '\BHD',
                                   prefixStyle:
                                       const TextStyle(color: Colors.grey),
                                   border: OutlineInputBorder(
@@ -1697,13 +1697,9 @@ print('Add product response: ${res.body}');
                                   items: [
                                     'Fruits',
                                     'Vegetables',
-                                    'Dairy',
-                                    'Bakery',
-                                    'Meat',
-                                    'Grains',
-                                    'Beverages',
-                                    'Snacks',
-                                    'Household',
+                                    'Herbs & Lettuce',
+                                    'Dried Fruit',
+                                    
                                     'Other'
                                   ].map((String category) {
                                     return DropdownMenuItem<String>(
@@ -1899,13 +1895,9 @@ print('Add product response: ${res.body}');
                                   _categoryFilterChip('All', null),
                                   _categoryFilterChip('Fruits', 'Fruits'),
                                   _categoryFilterChip('Vegetables', 'Vegetables'),
-                                  _categoryFilterChip('Dairy', 'Dairy'),
-                                  _categoryFilterChip('Grains', 'Grains'),
-                                  _categoryFilterChip('Bakery', 'Bakery'),
-                                  _categoryFilterChip('Meat', 'Meat'),
-                                  _categoryFilterChip('Beverages', 'Beverages'),
-                                  _categoryFilterChip('Snacks', 'Snacks'),
-                                  _categoryFilterChip('Household', 'Household'),
+                                  _categoryFilterChip('Herbs & Lettuce', 'Herbs & Lettuce'),
+                                  _categoryFilterChip('Dried Fruit', 'Dried Fruit'),
+                                
                                 ],
                               ),
                             ),
@@ -3103,20 +3095,11 @@ Widget _productFilterDropdown() {
       return GroceryItems.getItemsByCategory('fruits');
     } else if (_selectedProductCategory == 'Vegetables') {
       return GroceryItems.getItemsByCategory('vegetables');
-    } else if (_selectedProductCategory == 'Dairy') {
-      return GroceryItems.getItemsByCategory('dairy');
-    } else if (_selectedProductCategory == 'Grains') {
-      return GroceryItems.getItemsByCategory('grains & cereals');
-    } else if (_selectedProductCategory == 'Bakery') {
-      return GroceryItems.getItemsByCategory('bakery');
-    } else if (_selectedProductCategory == 'Meat') {
-      return GroceryItems.getItemsByCategory('seafood & meat');
-    } else if (_selectedProductCategory == 'Beverages') {
-      return GroceryItems.getItemsByCategory('beverages');
-    } else if (_selectedProductCategory == 'Snacks') {
-      return GroceryItems.getItemsByCategory('snacks & processed');
-    } else if (_selectedProductCategory == 'Household') {
-      return GroceryItems.getItemsByCategory('condiments & sauces');
+    } else if (_selectedProductCategory == 'Herbs & Lettuce') {
+      return GroceryItems.getItemsByCategory('herbs & lettuce');
+    } else if (_selectedProductCategory == 'Dried Fruit') {
+      return GroceryItems.getItemsByCategory('dried fruit');
+   
     } else {
       return GroceryItems.getAllItems();
     }

@@ -973,6 +973,9 @@ class Product {
   final bool isAvailable;
   final String sellerId;
   final String? sellerName;
+  final int discount; // Discount percentage (0-100)
+  final int tax; // Tax percentage (0-100)
+  final bool hasVAT; // Whether VAT is applicable
   final DateTime createdAt;
 
   Product({
@@ -985,8 +988,63 @@ class Product {
     required this.isAvailable,
     required this.sellerId,
     this.sellerName,
+    this.discount = 0,
+    this.tax = 0,
+    this.hasVAT = false,
     required this.createdAt,
   });
+
+  // Calculate discounted price
+  double get discountedPrice {
+    if (discount > 0) {
+      return price - (price * discount / 100);
+    }
+    return price;
+  }
+
+  // Calculate price with tax
+  double get priceWithTax {
+    if (tax > 0) {
+      return discountedPrice + (discountedPrice * tax / 100);
+    }
+    return discountedPrice;
+  }
+
+  // Calculate final price (with discount, tax, and VAT if applicable)
+  double get finalPrice {
+    double basePrice = priceWithTax;
+    if (hasVAT) {
+      // Assuming standard VAT rate of 18% - you can modify this as needed
+      const double vatRate = 18.0;
+      basePrice += (basePrice * vatRate / 100);
+    }
+    return basePrice;
+  }
+
+  // Calculate discount amount
+  double get discountAmount {
+    if (discount > 0) {
+      return price * discount / 100;
+    }
+    return 0.0;
+  }
+
+  // Calculate tax amount
+  double get taxAmount {
+    if (tax > 0) {
+      return discountedPrice * tax / 100;
+    }
+    return 0.0;
+  }
+
+  // Calculate VAT amount
+  double get vatAmount {
+    if (hasVAT) {
+      const double vatRate = 18.0;
+      return priceWithTax * vatRate / 100;
+    }
+    return 0.0;
+  }
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
@@ -999,6 +1057,9 @@ class Product {
       isAvailable: json['isAvailable'] ?? true,
       sellerId: json['sellerId'] ?? '',
       sellerName: json['sellerName'],
+      discount: json['discount'] ?? 0,
+      tax: json['tax'] ?? 0,
+      hasVAT: json['hasVAT'] ?? false,
       createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
     );
   }
@@ -1014,9 +1075,59 @@ class Product {
       'isAvailable': isAvailable,
       'sellerId': sellerId,
       'sellerName': sellerName,
+      'discount': discount,
+      'tax': tax,
+      'hasVAT': hasVAT,
       'createdAt': createdAt.toIso8601String(),
     };
   }
+
+  // Copy Product with updated fields
+  Product copyWith({
+    String? id,
+    String? name,
+    String? description,
+    double? price,
+    String? category,
+    String? imageUrl,
+    bool? isAvailable,
+    String? sellerId,
+    String? sellerName,
+    int? discount,
+    int? tax,
+    bool? hasVAT,
+    DateTime? createdAt,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      price: price ?? this.price,
+      category: category ?? this.category,
+      imageUrl: imageUrl ?? this.imageUrl,
+      isAvailable: isAvailable ?? this.isAvailable,
+      sellerId: sellerId ?? this.sellerId,
+      sellerName: sellerName ?? this.sellerName,
+      discount: discount ?? this.discount,
+      tax: tax ?? this.tax,
+      hasVAT: hasVAT ?? this.hasVAT,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'Product(id: $id, name: $name, price: $price, discount: $discount%, tax: $tax%, hasVAT: $hasVAT, isAvailable: $isAvailable)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Product && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 // Seller Request Model

@@ -91,7 +91,7 @@ class _HeaderState extends State<Header> {
   elevation: 2,
   automaticallyImplyLeading: false,
   centerTitle: true,
-  leading: _buildLeadingLogo(isDesktop, isTablet, isMobile),
+  leading: _buildLeadingLogo(isDesktop, isTablet, isMobile, context),
   title: Column(
     mainAxisSize: MainAxisSize.min,
     children: [
@@ -102,16 +102,26 @@ class _HeaderState extends State<Header> {
   actions: _buildActions(isDesktop, isTablet, isMobile, context),
 );
   }
-  Widget _buildLeadingLogo(bool isDesktop, bool isTablet, bool isMobile) {
+  
+  Widget _buildLeadingLogo(bool isDesktop, bool isTablet, bool isMobile, BuildContext context) {
     double logoSize = isDesktop ? 24 : (isTablet ? 22 : 20);
     
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: Image.asset(
-        'images/logo.png',
-        width: logoSize,
-        height: logoSize,
-        fit: BoxFit.contain,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.pushNamedAndRemoveUntil(
+            context, 
+            '/home',
+            (route) => false, // This removes all previous routes
+          );
+        },
+        child: Image.asset(
+          'images/logo.png',
+          width: logoSize,
+          height: logoSize,
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
