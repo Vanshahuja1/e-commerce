@@ -5,7 +5,6 @@ import '/services/cart_service.dart';
 import '/widgets/header.dart';
 import '/services/auth_service.dart';
 
-
 class ShowcaseScreen extends StatefulWidget {
   const ShowcaseScreen({Key? key}) : super(key: key);
 
@@ -43,7 +42,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
 
   Future<void> _addToCart() async {
     if (product == null) return;
-    
+
     setState(() {
       _isLoading = true;
     });
@@ -52,9 +51,9 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
       for (int i = 0; i < _quantity; i++) {
         await CartService.addToCart(Map<String, dynamic>.from(product));
       }
-      
+
       await _loadCartCount();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -145,7 +144,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                       ),
                     ),
             ),
-            
+
             // Product Details
             Container(
               padding: const EdgeInsets.all(20),
@@ -163,7 +162,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  
+
                   // Category
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -182,18 +181,62 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Price
                   Row(
                     children: [
-                      Text(
-                        'BHD${product['price']?.toString() ?? '0'}',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green.shade700,
+                      if (product['discount'] != null && product['discount'] > 0) ...[
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'BHD${product['price']?.toString() ?? '0'}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey.shade500,
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  'BHD${_calculateDiscountedPrice(product['price'], product['discount'])}',
+                                  style: TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green.shade700,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '${product['discount']}% OFF',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ),
+                      ] else ...[
+                        Text(
+                          'BHD${product['price']?.toString() ?? '0'}',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                      ],
                       Text(
                         ' /${product['unit']?.toString() ?? 'unit'}',
                         style: TextStyle(
@@ -204,7 +247,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Availability Status
                   Row(
                     children: [
@@ -233,7 +276,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Description
                   Text(
                     'Description',
@@ -253,7 +296,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Product Details
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -277,6 +320,12 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                         _buildDetailRow('Product ID', product['_id']?.toString() ?? 'N/A'),
                         _buildDetailRow('Unit', product['unit']?.toString() ?? 'N/A'),
                         _buildDetailRow('Available Quantity', '${product['quantity']?.toString() ?? '0'} ${product['unit']?.toString() ?? 'units'}'),
+                        if (product['discount'] != null && product['discount'] > 0)
+                          _buildDetailRow('Discount', '${product['discount']}%'),
+                        if (product['tax'] != null && product['tax'] > 0)
+                          _buildDetailRow('Tax', '${product['tax']}%'),
+                        if (product['hasVAT'] == true)
+                          _buildDetailRow('VAT', 'Applicable'),
                         if (product['createdAt'] != null)
                           _buildDetailRow('Listed On', _formatDate(product['createdAt'].toString())),
                         if (product['updatedAt'] != null)
@@ -285,7 +334,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Quantity Selector
                   if (product['isAvailable'] == true) ...[
                     Row(
@@ -350,7 +399,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Total Price
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -359,24 +408,114 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.green.shade200),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Column(
                         children: [
-                          Text(
-                            'Total Price:',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade800,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Subtotal:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                              Text(
+                                'BHD${_calculateSubtotal()}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            'BHD${(double.tryParse(product['price']?.toString() ?? '0') ?? 0) * _quantity}',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green.shade700,
+                          if (product['discount'] != null && product['discount'] > 0) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Discount (${product['discount']}%):',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.red.shade600,
+                                  ),
+                                ),
+                                Text(
+                                  '-BHD${_calculateDiscountAmount()}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.red.shade600,
+                                  ),
+                                ),
+                              ],
                             ),
+                          ],
+                          if (product['tax'] != null && product['tax'] > 0) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Tax (${product['tax']}%):',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                                Text(
+                                  'BHD${_calculateTaxAmount()}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (product['hasVAT'] == true) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'VAT:',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                                Text(
+                                  'Included',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Total Price:',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                              Text(
+                                'BHD${_calculateTotalPrice()}',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green.shade700,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -385,10 +524,11 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 100), // Space for bottom navigation bar
           ],
         ),
       ),
-      
+
       // Bottom Add to Cart Button
       bottomNavigationBar: product['isAvailable'] == true ? Container(
         padding: const EdgeInsets.all(20),
@@ -408,7 +548,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
             height: 50,
             child: ElevatedButton.icon(
               onPressed: _isLoading ? null : _addToCart,
-              icon: _isLoading 
+              icon: _isLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
@@ -509,5 +649,48 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     } catch (e) {
       return dateString;
     }
+  }
+
+  // Helper methods for price calculations with discount and tax
+  String _calculateDiscountedPrice(dynamic price, dynamic discount) {
+    double originalPrice = double.tryParse(price?.toString() ?? '0') ?? 0;
+    double discountPercent = double.tryParse(discount?.toString() ?? '0') ?? 0;
+    double discountedPrice = originalPrice * (1 - discountPercent / 100);
+    return discountedPrice.toStringAsFixed(2);
+  }
+
+  String _calculateSubtotal() {
+    double price = double.tryParse(product['price']?.toString() ?? '0') ?? 0;
+    return (price * _quantity).toStringAsFixed(2);
+  }
+
+  String _calculateDiscountAmount() {
+    double price = double.tryParse(product['price']?.toString() ?? '0') ?? 0;
+    double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0;
+    double discountAmount = (price * _quantity) * (discount / 100);
+    return discountAmount.toStringAsFixed(2);
+  }
+
+  String _calculateTaxAmount() {
+    double price = double.tryParse(product['price']?.toString() ?? '0') ?? 0;
+    double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0;
+    double tax = double.tryParse(product['tax']?.toString() ?? '0') ?? 0;
+
+    // Calculate price after discount
+    double discountedPrice = price * (1 - discount / 100);
+    double taxAmount = (discountedPrice * _quantity) * (tax / 100);
+    return taxAmount.toStringAsFixed(2);
+  }
+
+  String _calculateTotalPrice() {
+    double price = double.tryParse(product['price']?.toString() ?? '0') ?? 0;
+    double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0;
+    double tax = double.tryParse(product['tax']?.toString() ?? '0') ?? 0;
+
+    // Calculate price after discount
+    double discountedPrice = price * (1 - discount / 100);
+    // Add tax to discounted price
+    double finalPrice = discountedPrice * (1 + tax / 100);
+    return (finalPrice * _quantity).toStringAsFixed(2);
   }
 }
