@@ -204,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     
-    Navigator.pushNamed(context, '/offers'); // or '/discounts'
+    Navigator.pushNamed(context, '/discount'); // <-- update to '/discount'
   }
 
   @override
@@ -263,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: 0,
         onHomeTap: () {},
         onCategoriesTap: _handleCategoriesNavigation,
-        onDiscountTap: _handleDiscountNavigation,
+        onDiscountTap: _handleDiscountNavigation, // <-- this will now redirect to '/discount'
         onProfileTap: _handleProfileNavigation,
       ),
     );

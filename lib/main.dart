@@ -19,6 +19,8 @@ import 'screens/payment.dart';
 import 'screens/search/showcase_screen.dart';
 import 'screens/order_success.dart';
 
+import 'screens/discounts/discount_screen.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -179,7 +181,10 @@ class GroceryApp extends StatelessWidget {
 
       case AppRoutes.home:
         return _createRoute(const HomeScreen());
+      
 
+      case AppRoutes.discount:
+        return _createRoute(const DiscountScreen());
      
 
       case AppRoutes.adminDashbaord:

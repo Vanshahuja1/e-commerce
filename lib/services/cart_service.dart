@@ -66,6 +66,9 @@ class CartService {
         'category': product['category'],
         'unit': product['unit'],
         'quantity': 1,
+        'discount': product['discount'] ?? 0,
+        'tax': product['tax'] ?? 0,
+        'hasVAT': product['hasVAT'] ?? false,
       });
       
       print('CartService: Adding to cart request body: $requestBody'); // Add this line
@@ -189,9 +192,18 @@ class CartService {
     try {
       final cartItems = await getCartItems();
       return cartItems.fold<double>(0.0, (sum, item) {
-        final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+        final originalPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
         final quantity = item['quantity'] as int? ?? 0;
-        return sum + (price * quantity);
+        final discount = (item['discount'] as num?)?.toDouble() ?? 0.0;
+        final tax = (item['tax'] as num?)?.toDouble() ?? 0.0;
+        
+        // Calculate discounted price
+        final discountedPrice = originalPrice * (1 - discount / 100);
+        
+        // Calculate tax on discounted price
+        final finalPrice = discountedPrice * (1 + tax / 100);
+        
+        return sum + (finalPrice * quantity);
       });
     } catch (e) {
       print('Error calculating total price: $e');
@@ -247,5 +259,109 @@ class CartService {
       'userId': userId,
       'tokenPreview': token != null ? '${token.substring(0, 10)}...' : null,
     };
+  }
+
+  static Future<double> getTotalSavings() async {
+    try {
+      final cartItems = await getCartItems();
+      return cartItems.fold<double>(0.0, (sum, item) {
+        final originalPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
+        final quantity = item['quantity'] as int? ?? 0;
+        final discount = (item['discount'] as num?)?.toDouble() ?? 0.0;
+        
+        final savings = originalPrice * (discount / 100) * quantity;
+        return sum + savings;
+      });
+    } catch (e) {
+      print('Error calculating total savings: $e');
+      return 0.0;
+    }
+  }
+
+  static Future<double> getTotalTax() async {
+    try {
+      final cartItems = await getCartItems();
+      return cartItems.fold<double>(0.0, (sum, item) {
+        final originalPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
+        final quantity = item['quantity'] as int? ?? 0;
+        final discount = (item['discount'] as num?)?.toDouble() ?? 0.0;
+        final tax = (item['tax'] as num?)?.toDouble() ?? 0.0;
+        
+        // Calculate tax on discounted price
+        final discountedPrice = originalPrice * (1 - discount / 100);
+        final taxAmount = discountedPrice * (tax / 100) * quantity;
+        
+        return sum + taxAmount;
+      });
+    } catch (e) {
+      print('Error calculating total tax: $e');
+      return 0.0;
+    }
+  }
+
+  static Future<double> getSubtotal() async {
+    try {
+      final cartItems = await getCartItems();
+      return cartItems.fold<double>(0.0, (sum, item) {
+        final originalPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
+        final quantity = item['quantity'] as int? ?? 0;
+        final discount = (item['discount'] as num?)?.toDouble() ?? 0.0;
+        
+        // Calculate discounted price (before tax)
+        final discountedPrice = originalPrice * (1 - discount / 100);
+        
+        return sum + (discountedPrice * quantity);
+      });
+    } catch (e) {
+      print('Error calculating subtotal: $e');
+      return 0.0;
+    }
+  }
+
+  static Future<Map<String, double>> getCartSummary() async {
+    try {
+      final cartItems = await getCartItems();
+      double originalTotal = 0.0;
+      double subtotal = 0.0;
+      double totalSavings = 0.0;
+      double totalTax = 0.0;
+      
+      for (var item in cartItems) {
+        final originalPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
+        final quantity = item['quantity'] as int? ?? 0;
+        final discount = (item['discount'] as num?)?.toDouble() ?? 0.0;
+        final tax = (item['tax'] as num?)?.toDouble() ?? 0.0;
+        
+        // Original total
+        originalTotal += originalPrice * quantity;
+        
+        // Discounted price
+        final discountedPrice = originalPrice * (1 - discount / 100);
+        subtotal += discountedPrice * quantity;
+        
+        // Savings
+        totalSavings += (originalPrice * (discount / 100)) * quantity;
+        
+        // Tax on discounted price
+        totalTax += (discountedPrice * (tax / 100)) * quantity;
+      }
+      
+      return {
+        'originalTotal': originalTotal,
+        'subtotal': subtotal,
+        'totalSavings': totalSavings,
+        'totalTax': totalTax,
+        'finalTotal': subtotal + totalTax,
+      };
+    } catch (e) {
+      print('Error calculating cart summary: $e');
+      return {
+        'originalTotal': 0.0,
+        'subtotal': 0.0,
+        'totalSavings': 0.0,
+        'totalTax': 0.0,
+        'finalTotal': 0.0,
+      };
+    }
   }
 }

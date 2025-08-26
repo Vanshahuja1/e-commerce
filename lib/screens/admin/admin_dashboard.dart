@@ -127,6 +127,9 @@ class Product {
   final String sellerId;
   final String? sellerName;
   final DateTime createdAt;
+  final int discount; // <-- Add this
+  final int tax;      // <-- Add this
+  final bool hasVAT;  // <-- Add this
 
   Product({
     required this.id,
@@ -139,6 +142,9 @@ class Product {
     required this.sellerId,
     this.sellerName,
     required this.createdAt,
+    this.discount = 0, // <-- Add this, default 0
+    this.tax = 0,      // <-- Add this, default 0
+    this.hasVAT = false, // <-- Add this, default false
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -153,6 +159,9 @@ class Product {
       sellerId: json['sellerId'] ?? json['seller']?['_id'] ?? '',
       sellerName: json['seller']?['storeName'] ?? json['sellerName'],
       createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      discount: json['discount'] ?? 0, // <-- Add this
+      tax: json['tax'] ?? 0,           // <-- Add this
+      hasVAT: json['hasVAT'] ?? false, // <-- Add this
     );
   }
 
@@ -167,6 +176,9 @@ class Product {
     String? sellerId,
     String? sellerName,
     DateTime? createdAt,
+    int? discount,   // <-- Add this
+    int? tax,        // <-- Add this
+    bool? hasVAT,    // <-- Add this
   }) {
     return Product(
       id: id ?? this.id,
@@ -179,6 +191,9 @@ class Product {
       sellerId: sellerId ?? this.sellerId,
       sellerName: sellerName ?? this.sellerName,
       createdAt: createdAt ?? this.createdAt,
+      discount: discount ?? this.discount, // <-- Add this
+      tax: tax ?? this.tax,                // <-- Add this
+      hasVAT: hasVAT ?? this.hasVAT,       // <-- Add this
     );
   }
 }
@@ -233,6 +248,9 @@ class _AdminDashboardState extends State<AdminDashboard> with TickerProviderStat
   final _productDescriptionController = TextEditingController();
   final _productPriceController = TextEditingController();
   final _productQuantityController = TextEditingController();
+  final TextEditingController _productDiscountController = TextEditingController();
+  final TextEditingController _productTaxController = TextEditingController();
+  bool _productHasVAT = false;
   String _selectedProductCategory = 'Fruits';
   String _selectedProductUnit = 'kg';
   String? _selectedProductImageUrl;
@@ -289,6 +307,8 @@ class _AdminDashboardState extends State<AdminDashboard> with TickerProviderStat
     _productDescriptionController.dispose();
     _productPriceController.dispose();
     _productQuantityController.dispose();
+    _productDiscountController.dispose();
+    _productTaxController.dispose();
     super.dispose();
   }
 
@@ -746,6 +766,9 @@ Future<void> _fetchStats() async {
         'quantity': int.parse(_productQuantityController.text),
         'unit': _selectedProductUnit,
         'isAvailable': true,
+        'discount': int.tryParse(_productDiscountController.text) ?? 0,
+        'tax': int.tryParse(_productTaxController.text) ?? 0,
+        'hasVAT': _productHasVAT,
       };
 
       // Use admin-specific endpoint
@@ -758,8 +781,8 @@ Future<void> _fetchStats() async {
         body: jsonEncode(productData),
       );
         print('Request body: $productData');
-print('Add product status: ${res.statusCode}');
-print('Add product response: ${res.body}');
+       print('Add product status: ${res.statusCode}');
+       print('Add product response: ${res.body}');
       final data = jsonDecode(res.body);
 
       if ((res.statusCode == 200 || res.statusCode == 201) &&
@@ -819,6 +842,9 @@ print('Add product response: ${res.body}');
         'imageUrl': imageUrl,
         'quantity': int.parse(_productQuantityController.text),
         'unit': _selectedProductUnit,
+        'discount': int.tryParse(_productDiscountController.text) ?? 0,
+        'tax': int.tryParse(_productTaxController.text) ?? 0,
+        'hasVAT': _productHasVAT,
       };
 
       // Use admin-specific endpoint
@@ -915,6 +941,9 @@ print('Add product response: ${res.body}');
     _selectedProductImageUrl = product.imageUrl;
     _selectedPredefinedItem = null;
     _showImageSelector = false;
+    _productDiscountController.text = product.discount.toString();
+    _productTaxController.text = product.tax.toString();
+    _productHasVAT = product.hasVAT;
 
     setState(() {
       _isEditProductMode = true;
@@ -935,6 +964,9 @@ print('Add product response: ${res.body}');
     _isEditProductMode = false;
     _editingProductId = null;
     _showImageSelector = false;
+    _productDiscountController.clear();
+    _productTaxController.clear();
+    _productHasVAT = false;
   }
 
   String? _getPredefinedItemImageUrl(String itemName) {
@@ -1444,622 +1476,742 @@ print('Add product response: ${res.body}');
 
   // --- ADD PRODUCT TAB ---
   Widget _buildAddProductTab() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  _isEditProductMode ? "Edit Product" : "Add New Product",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 28,
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+    child: SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                _isEditProductMode ? "Edit Product" : "Add New Product",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 28,
+                ),
+              ),
+              const Spacer(),
+              if (_isEditProductMode)
+                TextButton.icon(
+                  onPressed: _clearProductForm,
+                  icon: const Icon(Icons.clear, color: Colors.grey),
+                  label: const Text(
+                    "Clear Form",
+                    style: TextStyle(color: Colors.grey),
                   ),
                 ),
-                const Spacer(),
-                if (_isEditProductMode)
-                  TextButton.icon(
-                    onPressed: _clearProductForm,
-                    icon: const Icon(Icons.clear, color: Colors.grey),
-                    label: const Text(
-                      "Clear Form",
-                      style: TextStyle(color: Colors.grey),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Container(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: Form(
+              key: _productFormKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Product Name
+                  const Text(
+                    "Product Name *",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Container(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: Form(
-                key: _productFormKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Product Name
-                    const Text(
-                      "Product Name *",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _productNameController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color(0xFF151A24),
+                      hintText: 'Enter product name',
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _productNameController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFF151A24),
-                        hintText: 'Enter product name',
-                        hintStyle: const TextStyle(color: Colors.grey),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Product name is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Product name is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
 
-                    // Product Description
-                    const Text(
-                      "Description *",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
+                  // Product Description
+                  const Text(
+                    "Description *",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _productDescriptionController,
+                    style: const TextStyle(color: Colors.white),
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color(0xFF151A24),
+                      hintText: 'Enter product description',
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _productDescriptionController,
-                      style: const TextStyle(color: Colors.white),
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFF151A24),
-                        hintText: 'Enter product description',
-                        hintStyle: const TextStyle(color: Colors.grey),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Product description is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Product description is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
 
-                    // Price and Quantity Row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Price *",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _productPriceController,
-                                style: const TextStyle(color: Colors.white),
-                                keyboardType: TextInputType.number,
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: const Color(0xFF151A24),
-                                  hintText: '0.00',
-                                  hintStyle:
-                                      const TextStyle(color: Colors.grey),
-                                  prefixText: '\BHD',
-                                  prefixStyle:
-                                      const TextStyle(color: Colors.grey),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 16,
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Price is required';
-                                  }
-                                  if (double.tryParse(value) == null) {
-                                    return 'Please enter a valid price';
-                                  }
-                                  if (double.parse(value) <= 0) {
-                                    return 'Price must be greater than 0';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Quantity *",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _productQuantityController,
-                                style: const TextStyle(color: Colors.white),
-                                keyboardType: TextInputType.number,
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: const Color(0xFF151A24),
-                                  hintText: '1',
-                                  hintStyle:
-                                      const TextStyle(color: Colors.grey),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 16,
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Quantity is required';
-                                  }
-                                  if (int.tryParse(value) == null) {
-                                    return 'Please enter a valid quantity';
-                                  }
-                                  if (int.parse(value) <= 0) {
-                                    return 'Quantity must be greater than 0';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Category and Unit Row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Category *",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF151A24),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedProductCategory,
-                                  dropdownColor: const Color(0xFF23293A),
-                                  style: const TextStyle(color: Colors.white),
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 16,
-                                    ),
-                                  ),
-                                  items: [
-                                    'Fruits',
-                                    'Vegetables',
-                                    'Herbs & Lettuce',
-                                    'Dried Fruit',
-                                    
-                                    'Other'
-                                  ].map((String category) {
-                                    return DropdownMenuItem<String>(
-                                      value: category,
-                                      child: Text(category),
-                                    );
-                                  }).toList(),
-                                  onChanged: (String? newValue) {
-                                    setState(() {
-                                      _selectedProductCategory = newValue!;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Unit *",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF151A24),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedProductUnit,
-                                  dropdownColor: const Color(0xFF23293A),
-                                  style: const TextStyle(color: Colors.white),
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 16,
-                                    ),
-                                  ),
-                                  items: [
-                                    'kg',
-                                    'g',
-                                    'lb',
-                                    'oz',
-                                    'piece',
-                                    'pack',
-                                    'bottle',
-                                    'box',
-                                    'bag',
-                                    'unit'
-                                  ].map((String unit) {
-                                    return DropdownMenuItem<String>(
-                                      value: unit,
-                                      child: Text(unit),
-                                    );
-                                  }).toList(),
-                                  onChanged: (String? newValue) {
-                                    setState(() {
-                                      _selectedProductUnit = newValue!;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Predefined Items
-                    const Text(
-                      "Choose Product Image *",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      "Select an image from our predefined collection. This is required to add a product.",
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    
-                    // Image Preview
-                    if (_selectedProductImageUrl != null)
-                      Container(
-                        width: 120,
-                        height: 120,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blueAccent, width: 2),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.network(
-                            _selectedProductImageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Colors.grey[800],
-                                child: const Icon(
-                                  Icons.image_not_supported,
-                                  color: Colors.grey,
-                                  size: 40,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    
-                    // Image Selector Button
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _showImageSelector = !_showImageSelector;
-                        });
-                      },
-                      icon: Icon(_showImageSelector ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
-                      label: Text(_showImageSelector ? 'Hide Image Selector' : 'Show Image Selector'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent.withOpacity(0.2),
-                        foregroundColor: Colors.blueAccent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    
-                    // Image Selector Grid
-                    if (_showImageSelector) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF151A24),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blueAccent.withOpacity(0.3)),
-                        ),
+                  // Price and Quantity Row
+                  Row(
+                    children: [
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                const Text(
-                                  "Select an image:",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const Spacer(),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _selectedPredefinedItem = null;
-                                      _selectedProductImageUrl = null;
-                                      _productNameController.clear();
-                                    });
-                                  },
-                                  child: const Text(
-                                    "Clear Selection",
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            
-                            // Category Filter
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: [
-                                  _categoryFilterChip('All', null),
-                                  _categoryFilterChip('Fruits', 'Fruits'),
-                                  _categoryFilterChip('Vegetables', 'Vegetables'),
-                                  _categoryFilterChip('Herbs & Lettuce', 'Herbs & Lettuce'),
-                                  _categoryFilterChip('Dried Fruit', 'Dried Fruit'),
-                                
-                                ],
+                            const Text(
+                              "Price *",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            
-                            // Image Grid
-                            SizedBox(
-  height: 300,
-  child: GridView.builder(
-    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 4,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1,
-    ),
-    itemCount: _getFilteredItems().length,
-    itemBuilder: (context, index) {
-      final itemName = _getFilteredItems()[index];
-      final imageUrl = GroceryItems.getImageUrl(itemName);
-      final isSelected = _selectedPredefinedItem == itemName;
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _productPriceController,
+                              style: const TextStyle(color: Colors.white),
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: const Color(0xFF151A24),
+                                hintText: '0.00',
+                                hintStyle: const TextStyle(color: Colors.grey),
+                                prefixText: '\BHD',
+                                prefixStyle: const TextStyle(color: Colors.grey),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 16,
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Price is required';
+                                }
+                                if (double.tryParse(value) == null) {
+                                  return 'Please enter a valid price';
+                                }
+                                if (double.parse(value) <= 0) {
+                                  return 'Price must be greater than 0';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Quantity *",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _productQuantityController,
+                              style: const TextStyle(color: Colors.white),
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: const Color(0xFF151A24),
+                                hintText: '1',
+                                hintStyle: const TextStyle(color: Colors.grey),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 16,
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Quantity is required';
+                                }
+                                if (int.tryParse(value) == null) {
+                                  return 'Please enter a valid quantity';
+                                }
+                                if (int.parse(value) <= 0) {
+                                  return 'Quantity must be greater than 0';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
 
-      return InkWell(
-        onTap: () {
-          setState(() {
-            _selectedPredefinedItem = itemName;
-            _selectedProductImageUrl = imageUrl;
-            _productNameController.text = itemName;
-          });
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected ? Colors.blueAccent : Colors.grey.withOpacity(0.3),
-              width: isSelected ? 2 : 1,
-            ),
-            color: isSelected ? Colors.blueAccent.withOpacity(0.1) : Colors.transparent,
-          ),
-          child: Column(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                  child: imageUrl != null
-                      ? Image.network(
-                          imageUrl,
+                  // Category and Unit Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Category *",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF151A24),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: DropdownButtonFormField<String>(
+                                value: _selectedProductCategory,
+                                dropdownColor: const Color(0xFF23293A),
+                                style: const TextStyle(color: Colors.white),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
+                                ),
+                                items: [
+                                  'Fruits',
+                                  'Vegetables',
+                                  'Herbs & Lettuce',
+                                  'Dried Fruit',
+                                  'Other'
+                                ].map((String category) {
+                                  return DropdownMenuItem<String>(
+                                    value: category,
+                                    child: Text(category),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    _selectedProductCategory = newValue!;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Unit *",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF151A24),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: DropdownButtonFormField<String>(
+                                value: _selectedProductUnit,
+                                dropdownColor: const Color(0xFF23293A),
+                                style: const TextStyle(color: Colors.white),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
+                                ),
+                                items: [
+                                  'kg',
+                                  'g',
+                                  'lb',
+                                  'oz',
+                                  'piece',
+                                  'pack',
+                                  'bottle',
+                                  'box',
+                                  'bag',
+                                  'unit'
+                                ].map((String unit) {
+                                  return DropdownMenuItem<String>(
+                                    value: unit,
+                                    child: Text(unit),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    _selectedProductUnit = newValue!;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ------ Discount, Tax, VAT ------
+                  const Text(
+                    "Discount (%)",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _productDiscountController,
+                    style: const TextStyle(color: Colors.white),
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color(0xFF151A24),
+                      hintText: '0',
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value != null && value.isNotEmpty) {
+                        final val = int.tryParse(value);
+                        if (val == null || val < 0 || val > 100) {
+                          return 'Enter 0-100';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  const Text(
+                    "Tax (%)",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _productTaxController,
+                    style: const TextStyle(color: Colors.white),
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color(0xFF151A24),
+                      hintText: '0',
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value != null && value.isNotEmpty) {
+                        final val = int.tryParse(value);
+                        if (val == null || val < 0 || val > 100) {
+                          return 'Enter 0-100';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: _productHasVAT,
+                        onChanged: (val) {
+                          setState(() {
+                            _productHasVAT = val ?? false;
+                          });
+                        },
+                        checkColor: Colors.white,
+                        activeColor: Colors.blueAccent,
+                      ),
+                      const Text(
+                        "Apply VAT (18%)",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // ------ End Discount, Tax, VAT ------
+
+                  // Predefined Items
+                  const Text(
+                    "Choose Product Image *",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    "Select an image from our predefined collection. This is required to add a product.",
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Image Preview
+                  if (_selectedProductImageUrl != null)
+                    Container(
+                      width: 120,
+                      height: 120,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blueAccent, width: 2),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          _selectedProductImageUrl!,
                           fit: BoxFit.cover,
-                          width: double.infinity,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
                               color: Colors.grey[800],
                               child: const Icon(
                                 Icons.image_not_supported,
                                 color: Colors.grey,
-                                size: 24,
+                                size: 40,
                               ),
                             );
                           },
-                        )
-                      : Container(
-                          color: Colors.grey[800],
-                          child: const Icon(
-                            Icons.image_not_supported,
-                            color: Colors.grey,
-                            size: 24,
-                          ),
-                        ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                child: Text(
-                  itemName,
-                  style: TextStyle(
-                    color: isSelected ? Colors.blueAccent : Colors.white,
-                    fontSize: 10,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  ),
-),
-                          ],
                         ),
                       ),
-                    ],
-                    
-                    const SizedBox(height: 20),
+                    ),
 
-                    const SizedBox(height: 32),
+                  // Image Selector Button
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _showImageSelector = !_showImageSelector;
+                      });
+                    },
+                    icon: Icon(_showImageSelector
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down),
+                    label: Text(_showImageSelector
+                        ? 'Hide Image Selector'
+                        : 'Show Image Selector'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent.withOpacity(0.2),
+                      foregroundColor: Colors.blueAccent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
 
-                                                             
-                     SizedBox(
-                       width: double.infinity,
-                       child: ElevatedButton(
-                         onPressed: _isAddingProduct
-                             ? null
-                             : (_selectedProductImageUrl == null 
-                                 ? null 
-                                 : (_isEditProductMode
-                                     ? _updateProduct
-                                     : _addProduct)),
-                         style: ElevatedButton.styleFrom(
-                           backgroundColor: _selectedProductImageUrl == null 
-                               ? Colors.grey 
-                               : Colors.blueAccent,
-                           foregroundColor: Colors.white,
-                           padding: const EdgeInsets.symmetric(vertical: 16),
-                           shape: RoundedRectangleBorder(
-                             borderRadius: BorderRadius.circular(12),
-                           ),
-                         ),
-                         child: _isAddingProduct
-                             ? const Row(
-                                 mainAxisAlignment: MainAxisAlignment.center,
-                                 children: [
-                                   SizedBox(
-                                     width: 20,
-                                     height: 20,
-                                     child: CircularProgressIndicator(
-                                       strokeWidth: 2,
-                                       valueColor: AlwaysStoppedAnimation<Color>(
-                                         Colors.white,
-                                       ),
-                                     ),
-                                   ),
-                                   SizedBox(width: 12),
-                                   Text('Processing...'),
-                                 ],
-                               )
-                             : _selectedProductImageUrl == null
-                                 ? const Row(
-                                     mainAxisAlignment: MainAxisAlignment.center,
-                                     children: [
-                                       Icon(Icons.image_not_supported, size: 20),
-                                       SizedBox(width: 8),
-                                       Text('Please select an image first'),
-                                     ],
-                                   )
-                                 : Text(_isEditProductMode
-                                     ? 'Update Product'
-                                     : 'Add Product'),
-                       ),
-                     ),
+                  // Image Selector Grid
+                  if (_showImageSelector) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF151A24),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: Colors.blueAccent.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text(
+                                "Select an image:",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const Spacer(),
+                              TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedPredefinedItem = null;
+                                    _selectedProductImageUrl = null;
+                                    _productNameController.clear();
+                                  });
+                                },
+                                child: const Text(
+                                  "Clear Selection",
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Category Filter
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _categoryFilterChip('All', null),
+                                _categoryFilterChip('Fruits', 'Fruits'),
+                                _categoryFilterChip('Vegetables', 'Vegetables'),
+                                _categoryFilterChip(
+                                    'Herbs & Lettuce', 'Herbs & Lettuce'),
+                                _categoryFilterChip(
+                                    'Dried Fruit', 'Dried Fruit'),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Image Grid
+                          SizedBox(
+                            height: 300,
+                            child: GridView.builder(
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 4,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: 1,
+                              ),
+                              itemCount: _getFilteredItems().length,
+                              itemBuilder: (context, index) {
+                                final itemName = _getFilteredItems()[index];
+                                final imageUrl =
+                                    GroceryItems.getImageUrl(itemName);
+                                final isSelected =
+                                    _selectedPredefinedItem == itemName;
+
+                                return InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedPredefinedItem = itemName;
+                                      _selectedProductImageUrl = imageUrl;
+                                      _productNameController.text = itemName;
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? Colors.blueAccent
+                                            : Colors.grey.withOpacity(0.3),
+                                        width: isSelected ? 2 : 1,
+                                      ),
+                                      color: isSelected
+                                          ? Colors.blueAccent.withOpacity(0.1)
+                                          : Colors.transparent,
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Expanded(
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                const BorderRadius.vertical(
+                                                    top: Radius.circular(6)),
+                                            child: imageUrl != null
+                                                ? Image.network(
+                                                    imageUrl,
+                                                    fit: BoxFit.cover,
+                                                    width: double.infinity,
+                                                    errorBuilder: (context,
+                                                        error, stackTrace) {
+                                                      return Container(
+                                                        color: Colors.grey[800],
+                                                        child: const Icon(
+                                                          Icons
+                                                              .image_not_supported,
+                                                          color: Colors.grey,
+                                                          size: 24,
+                                                        ),
+                                                      );
+                                                    },
+                                                  )
+                                                : Container(
+                                                    color: Colors.grey[800],
+                                                    child: const Icon(
+                                                      Icons
+                                                          .image_not_supported,
+                                                      color: Colors.grey,
+                                                      size: 24,
+                                                    ),
+                                                  ),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 4, vertical: 2),
+                                          child: Text(
+                                            itemName,
+                                            style: TextStyle(
+                                              color: isSelected
+                                                  ? Colors.blueAccent
+                                                  : Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: isSelected
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
-                ),
+
+                  const SizedBox(height: 20),
+                  const SizedBox(height: 32),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isAddingProduct
+                          ? null
+                          : (_selectedProductImageUrl == null
+                              ? null
+                              : (_isEditProductMode
+                                  ? _updateProduct
+                                  : _addProduct)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _selectedProductImageUrl == null
+                            ? Colors.grey
+                            : Colors.blueAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isAddingProduct
+                          ? const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor:
+                                        AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Text('Processing...'),
+                              ],
+                            )
+                          : _selectedProductImageUrl == null
+                              ? const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.image_not_supported, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('Please select an image first'),
+                                  ],
+                                )
+                              : Text(_isEditProductMode
+                                  ? 'Update Product'
+                                  : 'Add Product'),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // Keep all other UI methods the same...
  
@@ -2254,7 +2406,7 @@ print('Add product response: ${res.body}');
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
       child: Column(
-crossAxisAlignment: CrossAxisAlignment.start,
+    crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -2428,302 +2580,84 @@ Widget _productFilterDropdown() {
   }
 
   Widget _productCard(Product product) {
-    return Card(
-      color: const Color(0xFF23293A),
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: product.isAvailable
-                ? Colors.green.withOpacity(0.3)
-                : Colors.orange.withOpacity(0.3),
-            width: 2,
-          ),
+  return Card(
+    color: const Color(0xFF23293A),
+    margin: const EdgeInsets.only(bottom: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: product.isAvailable
+              ? Colors.green.withOpacity(0.3)
+              : Colors.orange.withOpacity(0.3),
+          width: 2,
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth > 600) {
-                return Row(
-                  children: [
-                    Stack(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.grey[800],
-                          ),
-                          child: product.imageUrl != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    product.imageUrl!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Icon(
-                                        Icons.inventory,
-                                        color: Colors.grey[400],
-                                        size: 40,
-                                      );
-                                    },
-                                  ),
-                                )
-                              : Icon(
-                                  Icons.inventory,
-                                  color: Colors.grey[400],
-                                  size: 40,
-                                ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth > 600) {
+              return Row(
+                children: [
+                  Stack(
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.grey[800],
                         ),
-                        if (!product.isAvailable)
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
+                        child: product.imageUrl != null
+                            ? ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
-                                color: Colors.black.withOpacity(0.7),
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.visibility_off,
-                                  color: Colors.orange,
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  product.name,
-                                  style: TextStyle(
-                                    color: product.isAvailable
-                                        ? Colors.white
-                                        : Colors.grey[400],
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    decoration: product.isAvailable
-                                        ? null
-                                        : TextDecoration.lineThrough,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: product.isAvailable
-                                      ? Colors.green.withOpacity(0.2)
-                                      : Colors.orange.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      product.isAvailable
-                                          ? Icons.visibility
-                                          : Icons.visibility_off,
-                                      size: 12,
-                                      color: product.isAvailable
-                                          ? Colors.green
-                                          : Colors.orange,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      product.isAvailable
-                                          ? 'VISIBLE'
-                                          : 'HIDDEN',
-                                      style: TextStyle(
-                                        color: product.isAvailable
-                                            ? Colors.green
-                                            : Colors.orange,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            product.description,
-                            style: TextStyle(
-                              color: product.isAvailable
-                                  ? Colors.grey
-                                  : Colors.grey[600],
-                              fontSize: 14,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 2,
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Text(
-                                '\$${product.price.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  color: product.isAvailable
-                                      ? Colors.green
-                                      : Colors.grey[500],
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.blueAccent.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  product.category,
-                                  style: const TextStyle(
-                                    color: Colors.blueAccent,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                    
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Column(
-                      children: [
-                        Text(
-                          product.isAvailable
-                              ? 'Customers can see this'
-                              : 'Hidden from customers',
-                          style: TextStyle(
-                            color: product.isAvailable
-                                ? Colors.green
-                                : Colors.orange,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Switch(
-                          value: product.isAvailable,
-                          onChanged: (value) =>
-                              _toggleProductAvailability(product),
-                          activeColor: Colors.green,
-                          inactiveThumbColor: Colors.orange,
-                          inactiveTrackColor: Colors.orange.withOpacity(0.3),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          product.isAvailable ? 'VISIBLE' : 'HIDDEN',
-                          style: TextStyle(
-                            color: product.isAvailable
-                                ? Colors.green
-                                : Colors.orange,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              onPressed: () => _editProduct(product),
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              tooltip: 'Edit Product',
-                            ),
-                            IconButton(
-                              onPressed: () =>
-                                  _showDeleteProductConfirmation(product),
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              tooltip: 'Delete Product',
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                );
-              } else {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Stack(
-                          children: [
-                            Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.grey[800],
-                              ),
-                              child: product.imageUrl != null
-                                  ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.network(
-                                        product.imageUrl!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                          return Icon(
-                                            Icons.inventory,
-                                            color: Colors.grey[400],
-                                            size: 30,
-                                          );
-                                        },
-                                      ),
-                                    )
-                                  : Icon(
+                                child: Image.network(
+                                  product.imageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
                                       Icons.inventory,
                                       color: Colors.grey[400],
-                                      size: 30,
-                                    ),
-                            ),
-                            if (!product.isAvailable)
-                              Positioned.fill(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    color: Colors.black.withOpacity(0.7),
-                                  ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.visibility_off,
-                                      color: Colors.orange,
-                                      size: 20,
-                                    ),
-                                  ),
+                                      size: 40,
+                                    );
+                                  },
                                 ),
+                              )
+                            : Icon(
+                                Icons.inventory,
+                                color: Colors.grey[400],
+                                size: 40,
                               ),
-                          ],
+                      ),
+                      if (!product.isAvailable)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.black.withOpacity(0.7),
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.visibility_off,
+                                color: Colors.orange,
+                                size: 24,
+                              ),
+                            ),
+                          ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
+                    ],
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
                                 product.name,
                                 style: TextStyle(
                                   color: product.isAvailable
@@ -2737,30 +2671,15 @@ Widget _productFilterDropdown() {
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '\$${product.price.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  color: product.isAvailable
-                                      ? Colors.green
-                                      : Colors.grey[500],
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          children: [
+                            ),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: product.isAvailable
                                     ? Colors.green.withOpacity(0.2)
                                     : Colors.orange.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -2769,137 +2688,459 @@ Widget _productFilterDropdown() {
                                     product.isAvailable
                                         ? Icons.visibility
                                         : Icons.visibility_off,
-                                    size: 10,
+                                    size: 12,
                                     color: product.isAvailable
                                         ? Colors.green
                                         : Colors.orange,
                                   ),
-                                  const SizedBox(width: 2),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    product.isAvailable ? 'VISIBLE' : 'HIDDEN',
+                                    product.isAvailable
+                                        ? 'VISIBLE'
+                                        : 'HIDDEN',
                                     style: TextStyle(
                                       color: product.isAvailable
                                           ? Colors.green
                                           : Colors.orange,
-                                      fontSize: 8,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            Switch(
-                              value: product.isAvailable,
-                              onChanged: (value) =>
-                                  _toggleProductAvailability(product),
-                              activeColor: Colors.green,
-                              inactiveThumbColor: Colors.orange,
-                              inactiveTrackColor:
-                                  Colors.orange.withOpacity(0.3),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          product.description,
+                          style: TextStyle(
+                            color: product.isAvailable
+                                ? Colors.grey
+                                : Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Text(
+                              '\$${product.price.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                color: product.isAvailable
+                                    ? Colors.green
+                                    : Colors.grey[500],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
+                            const SizedBox(width: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.blueAccent.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                product.category,
+                                style: const TextStyle(
+                                  color: Colors.blueAccent,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        // --- Added: Tax, Discount, VAT badges ---
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            if (product.discount > 0)
+                              Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.14),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Discount: ${product.discount}%',
+                                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                                ),
+                              ),
+                            if (product.tax > 0)
+                              Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.14),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Tax: ${product.tax}%',
+                                  style: const TextStyle(color: Colors.orange, fontSize: 12),
+                                ),
+                              ),
+                            if (product.hasVAT)
+                              Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.purple.withOpacity(0.14),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'VAT Applied',
+                                  style: TextStyle(color: Colors.purple, fontSize: 12),
+                                ),
+                              ),
                           ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      product.description,
-                      style: TextStyle(
-                        color: product.isAvailable
-                            ? Colors.grey
-                            : Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.blueAccent.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            product.category,
-                            style: const TextStyle(
-                              color: Colors.blueAccent,
-                              fontSize: 12,
-                            ),
-                          ),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    children: [
+                      Text(
+                        product.isAvailable
+                            ? 'Customers can see this'
+                            : 'Hidden from customers',
+                        style: TextStyle(
+                          color: product.isAvailable
+                              ? Colors.green
+                              : Colors.orange,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
                         ),
-                        if (product.sellerName != null) ...[
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              'Seller: ${product.sellerName}',
-                              style: TextStyle(
-                                color: product.isAvailable
-                                    ? Colors.grey
-                                    : Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            
-                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Switch(
+                        value: product.isAvailable,
+                        onChanged: (value) =>
+                            _toggleProductAvailability(product),
+                        activeColor: Colors.green,
+                        inactiveThumbColor: Colors.orange,
+                        inactiveTrackColor: Colors.orange.withOpacity(0.3),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        product.isAvailable ? 'VISIBLE' : 'HIDDEN',
+                        style: TextStyle(
+                          color: product.isAvailable
+                              ? Colors.green
+                              : Colors.orange,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () => _editProduct(product),
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            tooltip: 'Edit Product',
+                          ),
+                          IconButton(
+                            onPressed: () =>
+                                _showDeleteProductConfirmation(product),
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            tooltip: 'Delete Product',
                           ),
                         ],
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: product.isAvailable
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: product.isAvailable
-                              ? Colors.green.withOpacity(0.3)
-                              : Colors.orange.withOpacity(0.3),
-                        ),
                       ),
-                      child: Row(
+                    ],
+                  ),
+                ],
+              );
+            } else {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Stack(
                         children: [
-                          Icon(
-                            product.isAvailable
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                            size: 16,
-                            color: product.isAvailable
-                                ? Colors.green
-                                : Colors.orange,
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.grey[800],
+                            ),
+                            child: product.imageUrl != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                      product.imageUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                        return Icon(
+                                          Icons.inventory,
+                                          color: Colors.grey[400],
+                                          size: 30,
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.inventory,
+                                    color: Colors.grey[400],
+                                    size: 30,
+                                  ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              product.isAvailable
-                                  ? 'This product is visible to customers and can be purchased'
-                                  : 'This product is hidden from customers and cannot be purchased',
+                          if (!product.isAvailable)
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.black.withOpacity(0.7),
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.visibility_off,
+                                    color: Colors.orange,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              product.name,
+                              style: TextStyle(
+                                color: product.isAvailable
+                                    ? Colors.white
+                                    : Colors.grey[400],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                decoration: product.isAvailable
+                                    ? null
+                                    : TextDecoration.lineThrough,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '\$${product.price.toStringAsFixed(2)}',
                               style: TextStyle(
                                 color: product.isAvailable
                                     ? Colors.green
-                                    : Colors.orange,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
+                                    : Colors.grey[500],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
                               ),
                             ),
+                            // --- Added: Tax, Discount, VAT badges (mobile) ---
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                if (product.discount > 0)
+                                  Container(
+                                    margin: const EdgeInsets.only(right: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.14),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'Discount: ${product.discount}%',
+                                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                                    ),
+                                  ),
+                                if (product.tax > 0)
+                                  Container(
+                                    margin: const EdgeInsets.only(right: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withOpacity(0.14),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'Tax: ${product.tax}%',
+                                      style: const TextStyle(color: Colors.orange, fontSize: 12),
+                                    ),
+                                  ),
+                                if (product.hasVAT)
+                                  Container(
+                                    margin: const EdgeInsets.only(right: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.purple.withOpacity(0.14),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'VAT Applied',
+                                      style: TextStyle(color: Colors.purple, fontSize: 12),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: product.isAvailable
+                                  ? Colors.green.withOpacity(0.2)
+                                  : Colors.orange.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  product.isAvailable
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  size: 10,
+                                  color: product.isAvailable
+                                      ? Colors.green
+                                      : Colors.orange,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  product.isAvailable ? 'VISIBLE' : 'HIDDEN',
+                                  style: TextStyle(
+                                    color: product.isAvailable
+                                        ? Colors.green
+                                        : Colors.orange,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: product.isAvailable,
+                            onChanged: (value) =>
+                                _toggleProductAvailability(product),
+                            activeColor: Colors.green,
+                            inactiveThumbColor: Colors.orange,
+                            inactiveTrackColor:
+                                Colors.orange.withOpacity(0.3),
                           ),
                         ],
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    product.description,
+                    style: TextStyle(
+                      color: product.isAvailable
+                          ? Colors.grey
+                          : Colors.grey[600],
+                      fontSize: 14,
                     ),
-                  ],
-                );
-              }
-            },
-          ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blueAccent.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          product.category,
+                          style: const TextStyle(
+                            color: Colors.blueAccent,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      if (product.sellerName != null) ...[
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Seller: ${product.sellerName}',
+                            style: TextStyle(
+                              color: product.isAvailable
+                                  ? Colors.grey
+                                  : Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: product.isAvailable
+                          ? Colors.green.withOpacity(0.1)
+                          : Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: product.isAvailable
+                            ? Colors.green.withOpacity(0.3)
+                            : Colors.orange.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          product.isAvailable
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                          size: 16,
+                          color: product.isAvailable
+                              ? Colors.green
+                              : Colors.orange,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            product.isAvailable
+                                ? 'This product is visible to customers and can be purchased'
+                                : 'This product is hidden from customers and cannot be purchased',
+                            style: TextStyle(
+                              color: product.isAvailable
+                                  ? Colors.green
+                                  : Colors.orange,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }
+          },
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // --- ORDERS TAB ---
   Widget _buildOrdersTab() {

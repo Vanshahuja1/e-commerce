@@ -1,614 +1,695 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-import '../services/cart_service.dart';
+import '/services/cart_service.dart';
+import '/widgets/header.dart';
+import '/services/auth_service.dart';
 
-class ProductsSection extends StatefulWidget {
-  final VoidCallback? refreshCartCount;
-
-  const ProductsSection({Key? key, this.refreshCartCount}) : super(key: key);
+class ShowcaseScreen extends StatefulWidget {
+  const ShowcaseScreen({Key? key}) : super(key: key);
 
   @override
-  ProductsSectionState createState() => ProductsSectionState();
+  State<ShowcaseScreen> createState() => _ShowcaseScreenState();
 }
 
-class ProductsSectionState extends State<ProductsSection> {
-  List<dynamic> products = [];
-  bool isLoading = true;
-  String? error;
-  Map<String, int> cartQuantities = {};
+class _ShowcaseScreenState extends State<ShowcaseScreen> {
+  dynamic product;
+  int _cartItemCount = 0;
+  int _quantity = 1;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    fetchProducts();
-    loadCartQuantities();
+    _loadCartCount();
   }
 
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
-  }
-
-  Future<Map<String, String>> _getAuthHeaders() async {
-    final token = await _getToken();
-    return {
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
-
-  Future<void> loadCartQuantities() async {
-    try {
-      final cartItems = await CartService.getCartItems();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args != null) {
       setState(() {
-        cartQuantities.clear();
-        for (var item in cartItems) {
-          String productId = item['_id']?.toString() ?? 
-                           item['productId']?.toString() ?? 
-                           item['id']?.toString() ?? '';
-          if (productId.isNotEmpty) {
-            cartQuantities[productId] = item['quantity'] ?? 1;
-          }
-        }
-      });
-    } catch (e) {
-      print('Error loading cart quantities: $e');
-    }
-  }
-
-  Future<void> refreshProducts() async {
-    await fetchProducts();
-    await loadCartQuantities();
-  }
-
-  Future<void> fetchProducts() async {
-    try {
-      setState(() {
-        isLoading = true;
-        error = null;
-      });
-
-      final headers = await _getAuthHeaders();
-      final response = await http.get(
-        Uri.parse('https://backend-ecommerce-app-co1r.onrender.com/api/items'),
-        headers: headers,
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(() {
-          if (data is List) {
-            products = data;
-          } else if (data is Map && data.containsKey('items')) {
-            products = data['items'];
-          } else if (data is Map && data.containsKey('data')) {
-            products = data['data'];
-          } else {
-            products = [data];
-          }
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          error = 'Failed to load products: ${response.statusCode}';
-          isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        error = 'Network error: $e';
-        isLoading = false;
+        product = args;
       });
     }
   }
 
-  Future<void> addItemToCart(dynamic product) async {
+  Future<void> _loadCartCount() async {
+    _cartItemCount = await CartService.getCartItemCount();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _addToCart() async {
+    if (product == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      final token = await _getToken();
-      if (token == null) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Please login to add items to cart'),
-              backgroundColor: Colors.orange.shade600,
-              duration: const Duration(milliseconds: 1500),
-              action: SnackBarAction(
-                label: 'Login',
-                textColor: Colors.white,
-                onPressed: () {
-                  Navigator.pushNamed(context, '/login');
-                },
-              ),
-            ),
-          );
-        }
-        return;
+      for (int i = 0; i < _quantity; i++) {
+        await CartService.addToCart(Map<String, dynamic>.from(product));
       }
 
-      await CartService.addToCart(Map<String, dynamic>.from(product));
-      await fetchProducts(); // Auto-refresh products
-      await loadCartQuantities(); // Auto-refresh cart quantities
+      await _loadCartCount();
 
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${product['name']} added to cart'),
+            content: Text('${product['name']} added to cart ($_quantity items)'),
             backgroundColor: Colors.green.shade600,
-            duration: const Duration(milliseconds: 800),
+            duration: const Duration(milliseconds: 1500),
           ),
         );
-      }
-
-      if (widget.refreshCartCount != null) {
-        widget.refreshCartCount!();
       }
     } catch (e) {
-      if (context.mounted) {
-        String errorMessage = 'Error adding item to cart';
-        if (e.toString().contains('User not authenticated')) {
-          errorMessage = 'Please login to add items to cart';
-        } else if (e.toString().contains('Network')) {
-          errorMessage = 'Network error. Please check your connection';
-        } else {
-          errorMessage = e.toString();
-        }
-        
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage),
+            content: Text('Error adding item to cart: $e'),
             backgroundColor: Colors.red.shade600,
             duration: const Duration(milliseconds: 1500),
-            action: e.toString().contains('User not authenticated') 
-                ? SnackBarAction(
-                    label: 'Login',
-                    textColor: Colors.white,
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/login');
-                    },
-                  )
-                : null,
           ),
         );
       }
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
-  }
-
-  Future<void> removeItemFromCart(dynamic product) async {
-    try {
-      final token = await _getToken();
-      if (token == null) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Please login to modify cart'),
-              backgroundColor: Colors.orange.shade600,
-              duration: const Duration(milliseconds: 1500),
-              action: SnackBarAction(
-                label: 'Login',
-                textColor: Colors.white,
-                onPressed: () {
-                  Navigator.pushNamed(context, '/login');
-                },
-              ),
-            ),
-          );
-        }
-        return;
-      }
-
-      String productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
-      int currentQuantity = cartQuantities[productId] ?? 0;
-      
-      if (currentQuantity > 0) {
-        if (currentQuantity == 1) {
-          await CartService.removeFromCart(productId);
-        } else {
-          await CartService.updateQuantity(productId, currentQuantity - 1);
-        }
-        await fetchProducts(); // Auto-refresh products
-        await loadCartQuantities(); // Auto-refresh cart quantities
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${product['name']} ${currentQuantity == 1 ? 'removed from' : 'quantity decreased in'} cart'),
-              backgroundColor: Colors.orange.shade600,
-              duration: const Duration(milliseconds: 800),
-            ),
-          );
-        }
-
-        if (widget.refreshCartCount != null) {
-          widget.refreshCartCount!();
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        String errorMessage = 'Error updating cart';
-        if (e.toString().contains('User not authenticated')) {
-          errorMessage = 'Please login to modify cart';
-        } else if (e.toString().contains('Network')) {
-          errorMessage = 'Network error. Please check your connection';
-        } else {
-          errorMessage = e.toString();
-        }
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red.shade600,
-            duration: const Duration(milliseconds: 1500),
-            action: e.toString().contains('User not authenticated') 
-                ? SnackBarAction(
-                    label: 'Login',
-                    textColor: Colors.white,
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/login');
-                    },
-                  )
-                : null,
-          ),
-        );
-      }
-    }
-  }
-
-  Map<String, dynamic> _getResponsiveDimensions(double screenWidth) {
-    int crossAxisCount;
-    double cardWidth;
-    double imageHeight;
-    
-    if (screenWidth > 1200) {
-      crossAxisCount = 5;
-      cardWidth = (screenWidth - 64) / 5;
-      imageHeight = 120;
-    } else if (screenWidth > 900) {
-      crossAxisCount = 4;
-      cardWidth = (screenWidth - 64) / 4;
-      imageHeight = 110;
-    } else if (screenWidth > 600) {
-      crossAxisCount = 3;
-      cardWidth = (screenWidth - 48) / 3;
-      imageHeight = 100;
-    } else if (screenWidth > 400) {
-      crossAxisCount = 2;
-      cardWidth = (screenWidth - 32) / 2;
-      imageHeight = 90;
-    } else {
-      crossAxisCount = 2;
-      cardWidth = (screenWidth - 32) / 2;
-      imageHeight = 80;
-    }
-    
-    return {
-      'crossAxisCount': crossAxisCount,
-      'cardWidth': cardWidth,
-      'imageHeight': imageHeight,
-    };
   }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final screenWidth = constraints.maxWidth;
-        final responsiveDimensions = _getResponsiveDimensions(screenWidth);
-        
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // REMOVED: Row with "Fresh Products", Refresh Button, View All
-              const SizedBox(height: 12),
-              if (isLoading)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      children: [
-                        CircularProgressIndicator(
-                          color: Colors.green.shade700,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Loading products...',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else if (error != null)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      children: [
-                        Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
-                        const SizedBox(height: 16),
-                        Text(
-                          error!,
-                          style: TextStyle(color: Colors.red.shade600),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: () => refreshProducts(),
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Retry'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade700,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else if (products.isEmpty)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      children: [
-                        Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey.shade400),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No products available',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: () => refreshProducts(),
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Refresh'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade700,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: products
-                      .take(10)
-                      .map((product) => _buildProductCard(
-                            product, 
-                            responsiveDimensions['cardWidth'],
-                            responsiveDimensions['imageHeight'],
-                            screenWidth,
-                          ))
-                      .toList(),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+    if (product == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Product Details'),
+          backgroundColor: Colors.green.shade700,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Text('No product data available'),
+        ),
+      );
+    }
 
-  Widget _buildProductCard(dynamic product, double cardWidth, double imageHeight, double screenWidth) {
-    String productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
-    int quantity = cartQuantities[productId] ?? 0;
-
-    return Container(
-      width: cardWidth - 6,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: Header(
+        cartItemCount: _cartItemCount,
+        onCartTap: () async {
+          await Navigator.pushNamed(context, '/cart');
+          _loadCartCount();
+        },
+        onProfileTap: () => Navigator.pushNamed(context, '/profile'),
+        onLogout: () async {
+          await AuthService.logout();
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/login');
+          }
+        },
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: imageHeight,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
-            ),
-            child: product['imageUrl'] != null && product['imageUrl'].toString().isNotEmpty
-                ? ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      topRight: Radius.circular(12),
-                    ),
-                    child: Image.network(
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Product Image
+            Container(
+              height: 300,
+              width: double.infinity,
+              color: Colors.white,
+              child: product['imageUrl'] != null && product['imageUrl'].toString().isNotEmpty
+                  ? Image.network(
                       product['imageUrl'].toString(),
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
-                        return _buildPlaceholderImage(imageHeight);
+                        return Container(
+                          color: Colors.grey.shade100,
+                          child: Icon(
+                            Icons.image,
+                            size: 80,
+                            color: Colors.grey.shade400,
+                          ),
+                        );
                       },
-                    ),
-                  )
-                : _buildPlaceholderImage(imageHeight),
-          ),
-          Padding(
-            padding: EdgeInsets.all(screenWidth > 600 ? 12 : 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  constraints: BoxConstraints(
-                    minHeight: screenWidth > 600 ? 36 : 32,
-                  ),
-                  child: Text(
-                    product['name']?.toString() ?? 'Unknown Product',
-                    style: TextStyle(
-                      fontSize: screenWidth > 600 ? 14 : 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade800,
-                      height: 1.2,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  product['category']?.toString() ?? '',
-                  style: TextStyle(
-                    fontSize: screenWidth > 600 ? 12 : 11,
-                    color: Colors.grey.shade600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        'BHD${product['price']?.toString() ?? '0'}',
-                        style: TextStyle(
-                          fontSize: screenWidth > 600 ? 16 : 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green.shade700,
-                        ),
+                    )
+                  : Container(
+                      color: Colors.grey.shade100,
+                      child: Icon(
+                        Icons.image,
+                        size: 80,
+                        color: Colors.grey.shade400,
                       ),
                     ),
-                    Text(
-                      '/${product['unit']?.toString() ?? 'unit'}',
+            ),
+
+            // Product Details
+            Container(
+              padding: const EdgeInsets.all(20),
+              color: Colors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Product Name
+                  Text(
+                    product['name']?.toString() ?? 'Unknown Product',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Category
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Text(
+                      product['category']?.toString() ?? '',
                       style: TextStyle(
-                        fontSize: screenWidth > 600 ? 10 : 9,
-                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Price
+                  Row(
+                    children: [
+                      if (product['discount'] != null && product['discount'] > 0) ...[
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'BHD${product['price']?.toString() ?? '0'}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey.shade500,
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  'BHD${_calculateDiscountedPrice(product['price'], product['discount'])}',
+                                  style: TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green.shade700,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '${product['discount']}% OFF',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ] else ...[
+                        Text(
+                          'BHD${product['price']?.toString() ?? '0'}',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                      ],
+                      Text(
+                        ' /${product['unit']?.toString() ?? 'unit'}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Availability Status
+                  Row(
+                    children: [
+                      Icon(
+                        product['isAvailable'] == true ? Icons.check_circle : Icons.cancel,
+                        color: product['isAvailable'] == true ? Colors.green : Colors.red,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        product['isAvailable'] == true ? 'In Stock' : 'Out of Stock',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: product['isAvailable'] == true ? Colors.green.shade700 : Colors.red.shade600,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        'Qty: ${product['quantity']?.toString() ?? '0'} ${product['unit']?.toString() ?? 'units'} available',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Description
+                  Text(
+                    'Description',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    product['description']?.toString() ?? 'No description available',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade700,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Product Details
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Product Details',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildDetailRow('Product ID', product['_id']?.toString() ?? 'N/A'),
+                        _buildDetailRow('Unit', product['unit']?.toString() ?? 'N/A'),
+                        _buildDetailRow('Available Quantity', '${product['quantity']?.toString() ?? '0'} ${product['unit']?.toString() ?? 'units'}'),
+                        if (product['discount'] != null && product['discount'] > 0)
+                          _buildDetailRow('Discount', '${product['discount']}%'),
+                        //if (product['tax'] != null && product['tax'] > 0)
+                          _buildDetailRow('Tax', '${product['tax']}%'),
+                        if (product['hasVAT'] == true)
+                          _buildDetailRow('VAT', 'Applicable'),
+                        if (product['createdAt'] != null)
+                          _buildDetailRow('Listed On', _formatDate(product['createdAt'].toString())),
+                        if (product['updatedAt'] != null)
+                          _buildDetailRow('Last Updated', _formatDate(product['updatedAt'].toString())),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Quantity Selector
+                  if (product['isAvailable'] == true) ...[
+                    Row(
+                      children: [
+                        Text(
+                          'Quantity: ',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              IconButton(
+                                onPressed: _quantity > 1 ? () {
+                                  setState(() {
+                                    _quantity--;
+                                  });
+                                } : null,
+                                icon: const Icon(Icons.remove),
+                                iconSize: 20,
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  _quantity.toString(),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () {
+                                  int maxQuantity = product['quantity'] ?? 1;
+                                  if (_quantity < maxQuantity) {
+                                    setState(() {
+                                      _quantity++;
+                                    });
+                                  }
+                                },
+                                icon: const Icon(Icons.add),
+                                iconSize: 20,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          'Max: ${product['quantity']?.toString() ?? '0'}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Total Price
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Subtotal:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                              Text(
+                                'BHD${_calculateSubtotal()}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (product['discount'] != null && product['discount'] > 0) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Discount (${product['discount']}%):',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.red.shade600,
+                                  ),
+                                ),
+                                Text(
+                                  '-BHD${_calculateDiscountAmount()}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.red.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (product['tax'] != null && product['tax'] > 0) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Tax (${product['tax']}%):',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                                Text(
+                                  'BHD${_calculateTaxAmount()}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (product['hasVAT'] == true) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'VAT:',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                                Text(
+                                  'Included',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Total Price:',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                              Text(
+                                'BHD${_calculateTotalPrice()}',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
-                SizedBox(height: screenWidth > 600 ? 12 : 10),
-                _buildCartControls(product, quantity, screenWidth),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCartControls(dynamic product, int quantity, double screenWidth) {
-    if (quantity == 0) {
-      return SizedBox(
-        width: double.infinity,
-        height: screenWidth > 600 ? 36 : 32,
-        child: ElevatedButton.icon(
-          onPressed: () => addItemToCart(product),
-          icon: Icon(Icons.add_shopping_cart, size: screenWidth > 600 ? 16 : 14),
-          label: Text(
-            'Add to Cart', 
-            style: TextStyle(fontSize: screenWidth > 600 ? 12 : 11),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green.shade700,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-      );
-    } else {
-      return Container(
-        height: screenWidth > 600 ? 36 : 32,
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.green.shade700, width: 1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            GestureDetector(
-              onTap: () => removeItemFromCart(product),
-              child: Container(
-                width: screenWidth > 600 ? 36 : 32,
-                height: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.green.shade700,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(7),
-                    bottomLeft: Radius.circular(7),
-                  ),
-                ),
-                child: Icon(
-                  Icons.remove,
-                  color: Colors.white,
-                  size: screenWidth > 600 ? 16 : 14,
-                ),
-              ),
-            ),
-            Expanded(
-              child: Container(
-                color: Colors.white,
-                child: Center(
-                  child: Text(
-                    quantity.toString(),
-                    style: TextStyle(
-                      fontSize: screenWidth > 600 ? 14 : 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green.shade700,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            GestureDetector(
-              onTap: () => addItemToCart(product),
-              child: Container(
-                width: screenWidth > 600 ? 36 : 32,
-                height: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.green.shade700,
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(7),
-                    bottomRight: Radius.circular(7),
-                  ),
-                ),
-                child: Icon(
-                  Icons.add,
-                  color: Colors.white,
-                  size: screenWidth > 600 ? 16 : 14,
-                ),
+                ],
               ),
             ),
           ],
         ),
-      );
+      ),
+
+      // Bottom Add to Cart Button
+      bottomNavigationBar: product['isAvailable'] == true ? Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade300,
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: _isLoading ? null : _addToCart,
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.add_shopping_cart),
+              label: Text(
+                _isLoading ? 'Adding...' : 'Add to Cart',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade700,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ) : Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade300,
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Container(
+            width: double.infinity,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Text(
+                'Out of Stock',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(String dateString) {
+    try {
+      DateTime date = DateTime.parse(dateString);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return dateString;
     }
   }
 
-  Widget _buildPlaceholderImage(double height) {
-    return Container(
-      width: double.infinity,
-      height: height,
-      color: Colors.grey.shade100,
-      child: Icon(
-        Icons.image,
-        size: height * 0.4,
-        color: Colors.grey.shade400,
-         ),
-    );
+  // Helper methods for price calculations with discount and tax
+  String _calculateDiscountedPrice(dynamic price, dynamic discount) {
+    double originalPrice = double.tryParse(price?.toString() ?? '0') ?? 0;
+    double discountPercent = double.tryParse(discount?.toString() ?? '0') ?? 0;
+    double discountedPrice = originalPrice * (1 - discountPercent / 100);
+    return discountedPrice.toStringAsFixed(2);
+  }
+
+  String _calculateSubtotal() {
+    double price = double.tryParse(product['price']?.toString() ?? '0') ?? 0;
+    return (price * _quantity).toStringAsFixed(2);
+  }
+
+  String _calculateDiscountAmount() {
+    double price = double.tryParse(product['price']?.toString() ?? '0') ?? 0;
+    double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0;
+    double discountAmount = (price * _quantity) * (discount / 100);
+    return discountAmount.toStringAsFixed(2);
+  }
+
+  String _calculateTaxAmount() {
+    double price = double.tryParse(product['price']?.toString() ?? '0') ?? 0;
+    double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0;
+    double tax = double.tryParse(product['tax']?.toString() ?? '0') ?? 0;
+
+    // Calculate price after discount
+    double discountedPrice = price * (1 - discount / 100);
+    double taxAmount = (discountedPrice * _quantity) * (tax / 100);
+    return taxAmount.toStringAsFixed(2);
+  }
+
+  String _calculateTotalPrice() {
+    double price = double.tryParse(product['price']?.toString() ?? '0') ?? 0;
+    double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0;
+    double tax = double.tryParse(product['tax']?.toString() ?? '0') ?? 0;
+
+    // Calculate price after discount
+    double discountedPrice = price * (1 - discount / 100);
+    // Add tax to discounted price
+    double finalPrice = discountedPrice * (1 + tax / 100);
+    return (finalPrice * _quantity).toStringAsFixed(2);
   }
 }

@@ -1,34 +1,61 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../services/cart_service.dart';
+import '../../services/cart_service.dart';
+import '../../widgets/header.dart';
+import '../../widgets/footer.dart';
+import '/models/user_model.dart';
 
-class ProductsSection extends StatefulWidget {
+class DiscountScreen extends StatefulWidget {
   final VoidCallback? refreshCartCount;
   final bool isGuestMode;
+  final UserModel? currentUser;
+  final bool isLoggedIn;
+  final VoidCallback? onLogout;
 
-  const ProductsSection({
+  const DiscountScreen({
     Key? key,
     this.refreshCartCount,
     this.isGuestMode = false,
+    this.currentUser,
+    this.isLoggedIn = false,
+    this.onLogout,
   }) : super(key: key);
 
   @override
-  ProductsSectionState createState() => ProductsSectionState();
+  DiscountScreenState createState() => DiscountScreenState();
 }
 
-class ProductsSectionState extends State<ProductsSection> {
+class DiscountScreenState extends State<DiscountScreen> {
   List<dynamic> products = [];
   bool isLoading = true;
   String? error;
   Map<String, int> cartQuantities = {};
+  int _cartItemCount = 0;
 
   @override
   void initState() {
     super.initState();
-    fetchProducts();
+    fetchDiscountProducts();
     if (!widget.isGuestMode) {
       loadCartQuantities();
+      _loadCartCount();
+    }
+  }
+
+  Future<void> _loadCartCount() async {
+    if (!widget.isLoggedIn) {
+      setState(() => _cartItemCount = 0);
+      return;
+    }
+    
+    try {
+      final count = await CartService.getCartItemCount();
+      if (mounted) {
+        setState(() => _cartItemCount = count);
+      }
+    } catch (e) {
+      print('Error loading cart count: $e');
     }
   }
 
@@ -53,27 +80,32 @@ class ProductsSectionState extends State<ProductsSection> {
   }
 
   Future<void> refreshProducts() async {
-    await fetchProducts();
+    await fetchDiscountProducts();
     if (!widget.isGuestMode) {
       await loadCartQuantities();
+      await _loadCartCount();
     }
   }
 
-  Future<void> fetchProducts() async {
+  Future<void> fetchDiscountProducts() async {
     try {
       setState(() {
         isLoading = true;
         error = null;
       });
       final response = await http.get(
-        Uri.parse('https://backend-ecommerce-app-co1r.onrender.com/api/admin-items'),
+        Uri.parse('https://backend-ecommerce-app-co1r.onrender.com/api/admin-products/with-discount'),
         headers: {'Content-Type': 'application/json'},
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        print('API Response: $data'); // Debug print
         setState(() {
           if (data is List) {
             products = data;
+          } else if (data is Map && data.containsKey('products')) {
+            // This matches your API response structure
+            products = data['products'];
           } else if (data is Map && data.containsKey('items')) {
             products = data['items'];
           } else if (data is Map && data.containsKey('data')) {
@@ -98,14 +130,15 @@ class ProductsSectionState extends State<ProductsSection> {
   }
 
   Future<void> addItemToCart(dynamic product) async {
-    if (widget.isGuestMode) {
+    if (widget.isGuestMode || !widget.isLoggedIn) {
       Navigator.pushNamed(context, '/login');
       return;
     }
     try {
       await CartService.addToCart(Map<String, dynamic>.from(product));
-      await fetchProducts();
+      await fetchDiscountProducts();
       await loadCartQuantities();
+      await _loadCartCount();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -141,8 +174,9 @@ class ProductsSectionState extends State<ProductsSection> {
         } else {
           await CartService.updateQuantity(productId, currentQuantity - 1);
         }
-        await fetchProducts();
+        await fetchDiscountProducts();
         await loadCartQuantities();
+        await _loadCartCount();
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -169,8 +203,79 @@ class ProductsSectionState extends State<ProductsSection> {
     }
   }
 
+  void _handleCartTap() {
+    if (widget.isLoggedIn) {
+      Navigator.pushNamed(context, '/cart');
+    } else {
+      Navigator.pushNamed(context, '/login');
+    }
+  }
+
+  void _handleProfileTap() {
+    if (widget.isLoggedIn) {
+      if (widget.currentUser?.userType == 'admin') {
+        Navigator.pushNamed(context, '/admin');
+      } else {
+        Navigator.pushNamed(context, '/profile');
+      }
+    } else {
+      Navigator.pushNamed(context, '/login');
+    }
+  }
+
+  void _handleHomeTap() {
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+  }
+
+  void _handleCategoriesTap() {
+    Navigator.pushNamed(context, '/search');
+  }
+
+  void _handleDiscountTap() {
+    // Already on discount screen, just refresh
+    refreshProducts();
+  }
+
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: Header(
+        cartItemCount: _cartItemCount,
+        currentUser: widget.currentUser,
+        isLoggedIn: widget.isLoggedIn,
+        onCartTap: _handleCartTap,
+        onProfileTap: _handleProfileTap,
+        onLogout: widget.onLogout ?? () {},
+      ),
+      body: Column(
+        children: [
+          // Main content area
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: refreshProducts,
+              color: Colors.green.shade700,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: _buildDiscountContent(),
+              ),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: Footer(
+        currentUser: widget.currentUser,
+        isLoggedIn: widget.isLoggedIn,
+        onHomeTap: _handleHomeTap,
+        onCategoriesTap: _handleCategoriesTap,
+        onDiscountTap: _handleDiscountTap,
+        onProfileTap: _handleProfileTap,
+        currentIndex: 2, // Discount tab is index 2
+      ),
+    );
+  }
+
+  Widget _buildDiscountContent() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
@@ -179,6 +284,16 @@ class ProductsSectionState extends State<ProductsSection> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 12),
+              Text(
+                'Discounts',
+                style: TextStyle(
+                  fontSize: screenWidth > 600 ? 28 : 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green.shade700,
+                  letterSpacing: 1.2,
+                ),
+              ),
               const SizedBox(height: 12),
               if (isLoading)
                 Center(
@@ -191,7 +306,7 @@ class ProductsSectionState extends State<ProductsSection> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Loading products...',
+                          'Loading discounts...',
                           style: TextStyle(
                             color: Colors.grey.shade600,
                             fontSize: 14,
@@ -237,7 +352,7 @@ class ProductsSectionState extends State<ProductsSection> {
                         Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey.shade400),
                         const SizedBox(height: 16),
                         Text(
-                          'No products available',
+                          'No discounts available',
                           style: TextStyle(color: Colors.grey.shade600),
                         ),
                         const SizedBox(height: 16),
@@ -269,6 +384,8 @@ class ProductsSectionState extends State<ProductsSection> {
                     return _buildProductCard(products[index], screenWidth);
                   },
                 ),
+              // Add bottom padding to account for footer
+              const SizedBox(height: 20),
             ],
           ),
         );
@@ -291,188 +408,156 @@ class ProductsSectionState extends State<ProductsSection> {
   }
 
   Widget _buildProductCard(dynamic product, double screenWidth) {
-  String productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
-  int quantity = cartQuantities[productId] ?? 0;
-  double originalPrice = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
-  double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0.0;
-  double discountedPrice = originalPrice * (1 - discount / 100);
-  bool hasDiscount = discount > 0;
+    String productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
+    int quantity = cartQuantities[productId] ?? 0;
 
-  // Fix: Remove IntrinsicHeight. Control card's height via SizedBox.
-  return GestureDetector(
-    onTap: () {
-      if (widget.isGuestMode) {
-        Navigator.pushNamed(context, '/login');
-      } else {
-        Navigator.pushNamed(
-          context,
-          '/showcase',
-          arguments: product,
-        );
-      }
-    },
-    child: SizedBox(
-      height: screenWidth > 600 ? 260 : 190, // Control card height
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.shade200,
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image Section
-            Expanded(
-              flex: 5,
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    topRight: Radius.circular(12),
+    return GestureDetector(
+      onTap: () {
+        if (widget.isGuestMode || !widget.isLoggedIn) {
+          Navigator.pushNamed(context, '/login');
+        } else {
+          Navigator.pushNamed(
+            context,
+            '/showcase',
+            arguments: product,
+          );
+        }
+      },
+      child: IntrinsicHeight(
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.shade200,
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image Section
+              Expanded(
+                flex: 5,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                    ),
+                    child: product['imageUrl'] != null &&
+                            product['imageUrl'].toString().isNotEmpty
+                        ? Image.network(
+                            product['imageUrl'].toString(),
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            errorBuilder: (context, error, stackTrace) {
+                              return _buildPlaceholderImage();
+                            },
+                          )
+                        : _buildPlaceholderImage(),
                   ),
                 ),
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        topRight: Radius.circular(12),
-                      ),
-                      child: product['imageUrl'] != null &&
-                              product['imageUrl'].toString().isNotEmpty
-                          ? Image.network(
-                              product['imageUrl'].toString(),
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                              errorBuilder: (context, error, stackTrace) {
-                                return _buildPlaceholderImage();
-                              },
-                            )
-                          : _buildPlaceholderImage(),
-                    ),
-                    if (hasDiscount)
-                      Positioned(
-                        top: 6,
-                        left: 6,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${discount.toInt()}% OFF',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: screenWidth > 600 ? 8 : 7,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
               ),
-            ),
-            // Product Details Section
-            Expanded(
-              flex: 4,
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                    horizontal: screenWidth > 600 ? 10 : 8,
-                    vertical: screenWidth > 600 ? 8 : 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Product Name with Add Button
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            product['name']?.toString() ?? 'Unknown Product',
-                            style: TextStyle(
-                              fontSize: screenWidth > 600 ? 12 : 10,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                              height: 1.2,
+              // Product Details Section
+              Expanded(
+                flex: 4,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth > 600 ? 10 : 8,
+                      vertical: screenWidth > 600 ? 8 : 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Product Name with Add Button
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              product['name']?.toString() ?? 'Unknown Product',
+                              style: TextStyle(
+                                fontSize: screenWidth > 600 ? 12 : 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                                height: 1.2,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(width: 6),
+                          _buildAddButton(product, quantity, screenWidth),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      // Quantity/Weight
+                      Text(
+                        '${product['weight'] ?? product['quantity'] ?? '500 g'} - Approx. ${product['pieces'] ?? '4-5pcs'}',
+                        style: TextStyle(
+                          fontSize: screenWidth > 600 ? 9 : 8,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.normal,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      // Price
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          'BHD ${product['price']?.toString() ?? '0.225'}',
+                          style: TextStyle(
+                            fontSize: screenWidth > 600 ? 13 : 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        _buildAddButton(product, quantity, screenWidth),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    // Quantity/Weight
-                    Text(
-                      '${product['weight'] ?? product['quantity'] ?? '500 g'} - Approx. ${product['pieces'] ?? '4-5pcs'}',
-                      style: TextStyle(
-                        fontSize: screenWidth > 600 ? 9 : 8,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.normal,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Spacer(), // This will push price info to the bottom, avoiding overflow
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: hasDiscount
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'BHD ${originalPrice.toStringAsFixed(3)}',
-                                  style: TextStyle(
-                                    fontSize: screenWidth > 600 ? 10 : 9,
-                                    color: Colors.grey.shade500,
-                                    decoration: TextDecoration.lineThrough,
-                                    decorationColor: Colors.grey.shade500,
-                                  ),
-                                ),
-                                Text(
-                                  'BHD ${discountedPrice.toStringAsFixed(3)}',
-                                  style: TextStyle(
-                                    fontSize: screenWidth > 600 ? 13 : 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Text(
-                              'BHD ${originalPrice.toStringAsFixed(3)}',
+                      // Discount badge (optional)
+                      if (product['discount'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Discount: ${product['discount']}%',
                               style: TextStyle(
-                                fontSize: screenWidth > 600 ? 13 : 11,
+                                color: Colors.red.shade700,
+                                fontSize: screenWidth > 600 ? 10 : 8,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
                               ),
                             ),
-                    ),
-                  ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildAddButton(dynamic product, int quantity, double screenWidth) {
     double buttonSize = screenWidth > 600 ? 22 : 18;
