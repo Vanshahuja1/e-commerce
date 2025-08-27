@@ -3,11 +3,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'dart:convert';
-final TextEditingController flatHouseController = TextEditingController();
-final TextEditingController floorController = TextEditingController();
-final TextEditingController areaController = TextEditingController();
-final TextEditingController landmarkController = TextEditingController();
+
 final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({Key? key}) : super(key: key);
 
@@ -43,13 +41,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
   double taxRate = 0.0;
 
   // Controllers for address form
+  final TextEditingController titleController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  final TextEditingController flatHouseController = TextEditingController();
+  final TextEditingController floorController = TextEditingController();
+  final TextEditingController areaController = TextEditingController();
+  final TextEditingController landmarkController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
-  final TextEditingController titleController = TextEditingController();
-  final TextEditingController pincodeController = TextEditingController();
   final TextEditingController cityController = TextEditingController();
   final TextEditingController stateController = TextEditingController();
+  final TextEditingController pincodeController = TextEditingController();
 
   @override
   void initState() {
@@ -131,21 +133,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   @override
-void dispose() {
-  nameController.dispose();
-  phoneController.dispose();
-  addressController.dispose();
-  titleController.dispose();
-  pincodeController.clear();
-  cityController.dispose();
-  stateController.dispose();
-  flatHouseController.dispose();  // ADD THIS
-  floorController.dispose();      // ADD THIS
-  areaController.dispose();       // ADD THIS
-  landmarkController.dispose();   // ADD THIS
-  _razorpay.clear();
-  super.dispose();
-}
+  void dispose() {
+    nameController.dispose();
+    phoneController.dispose();
+    addressController.dispose();
+    titleController.dispose();
+    pincodeController.dispose();
+    cityController.dispose();
+    stateController.dispose();
+    flatHouseController.dispose();
+    floorController.dispose();
+    areaController.dispose();
+    landmarkController.dispose();
+    _razorpay.clear();
+    super.dispose();
+  }
 
   double get subtotal => totalAmount;
   double get taxAmount => subtotal * taxRate;
@@ -196,8 +198,63 @@ void dispose() {
     }
   }
 
-  void _saveAddress() async {
-    if (!_validateAddressForm()) {
+  String _buildCompleteAddress() {
+    List<String> addressParts = [];
+    
+    if (flatHouseController.text.trim().isNotEmpty) {
+      addressParts.add(flatHouseController.text.trim());
+    }
+    
+    if (floorController.text.trim().isNotEmpty) {
+      addressParts.add('Floor: ${floorController.text.trim()}');
+    }
+    
+    if (areaController.text.trim().isNotEmpty) {
+      addressParts.add(areaController.text.trim());
+    }
+    
+    if (landmarkController.text.trim().isNotEmpty) {
+      addressParts.add('Near ${landmarkController.text.trim()}');
+    }
+    
+    if (addressController.text.trim().isNotEmpty) {
+      addressParts.add(addressController.text.trim());
+    }
+    
+    return addressParts.join(', ');
+  }
+
+  Future<void> _loadAddresses() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl$addressEndpoint'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success']) {
+          setState(() {
+            savedAddresses = (responseData['addresses'] as List)
+                .map((address) => Address.fromJson(address))
+                .toList();
+                
+            // Set the first address as selected if none selected
+            if (savedAddresses.isNotEmpty && selectedAddressIndex == -1) {
+              selectedAddressIndex = 0;
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading addresses: $e');
+    }
+  }
+
+  Future<void> _saveAddress() async {
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
@@ -205,43 +262,88 @@ void dispose() {
       isSavingAddress = true;
     });
 
-    // Simulate API call delay
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // Create the complete address string by combining all fields
+      String completeAddress = _buildCompleteAddress();
+      
+      Map<String, dynamic> addressData = {
+        'title': titleController.text.trim(),
+        'name': nameController.text.trim(),
+        'phone': phoneController.text.trim(),
+        'address': completeAddress, // Send the complete formatted address
+        'city': cityController.text.trim(),
+        'state': stateController.text.trim(),
+        'pincode': pincodeController.text.trim(),
+        'isDefault': savedAddresses.isEmpty, // First address is default
+      };
 
-    setState(() {
-      Address newAddress = Address(
-        id: isEditingAddress ? editingAddressId! : DateTime.now().millisecondsSinceEpoch.toString(),
-        title: titleController.text.trim(),
-        name: nameController.text.trim(),
-        phone: phoneController.text.trim(),
-        address: addressController.text.trim(),
-        city: cityController.text.trim(),
-        state: stateController.text.trim(),
-        pincode: pincodeController.text.trim(),
-      );
+      String url;
+      http.Response response;
+      
+      if (isEditingAddress && editingAddressId != null) {
+        url = '$baseUrl$addressEndpoint/$editingAddressId';
+        response = await http.put(
+          Uri.parse(url),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $_token',
+          },
+          body: json.encode(addressData),
+        );
+      } else {
+        url = '$baseUrl$addressEndpoint';
+        response = await http.post(
+          Uri.parse(url),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $_token',
+          },
+          body: json.encode(addressData),
+        );
+      }
 
-      if (isEditingAddress) {
-        // Update the existing address in the list
-        int index = savedAddresses.indexWhere((addr) => addr.id == editingAddressId);
-        if (index != -1) {
-          savedAddresses[index] = newAddress;
-          selectedAddressIndex = index;
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (responseData['success']) {
+          // Success
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(responseData['message'] ?? 'Address saved successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Refresh the addresses list
+          await _loadAddresses();
+
+          // Reset form state
+          setState(() {
+            isAddingNewAddress = false;
+            isEditingAddress = false;
+            editingAddressId = null;
+          });
+          _clearAddressForm();
+
+        } else {
+          throw Exception(responseData['message'] ?? 'Failed to save address');
         }
       } else {
-        // Add new address
-        savedAddresses.add(newAddress);
-        selectedAddressIndex = savedAddresses.length - 1;
+        throw Exception(responseData['message'] ?? 'Server error');
       }
-      isSavingAddress = false;
-      isAddingNewAddress = false;
-      isEditingAddress = false;
-      editingAddressId = null;
-      
-      _clearAddressForm();
-    });
 
-    _showSuccessSnackBar(isEditingAddress ? 'Address updated successfully' : 'Address added successfully');
-    Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        isSavingAddress = false;
+      });
+    }
   }
 
   Future<void> _deleteAddress(String addressId, int index) async {
@@ -410,33 +512,6 @@ void dispose() {
     }
   }
 
-  bool _validateAddressForm() {
-    if (titleController.text.trim().isEmpty ||
-        nameController.text.trim().isEmpty ||
-        phoneController.text.trim().isEmpty ||
-        addressController.text.trim().isEmpty ||
-        cityController.text.trim().isEmpty ||
-        stateController.text.trim().isEmpty ||
-        pincodeController.text.trim().isEmpty) {
-      _showErrorSnackBar('Please fill all required fields');
-      return false;
-    }
-
-    if (phoneController.text.trim().length < 10) {
-      _showErrorSnackBar('Please enter a valid phone number');
-      return false;
-    }
-
-    if (pincodeController.text.trim().length != 6) {
-      _showErrorSnackBar('Please enter a valid 6-digit pincode');
-      return false;
-    }
-
-    return true;
-  }
-
-
-
   void _populateAddressForm(Address address) {
     titleController.text = address.title;
     nameController.text = address.name;
@@ -600,13 +675,7 @@ void dispose() {
                             ],
                           ),
                         ),
-                        Text(
-                          'BHD${item['price']?.toString() ?? '0'}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green[700],
-                          ),
-                        ),
+                        
                       ],
                     ),
                   );
@@ -778,7 +847,7 @@ void dispose() {
             ),
             const SizedBox(height: 4),
             Text(
-              address.fullAddress,
+              address.fullAddressFormatted,
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 14,
@@ -843,354 +912,366 @@ void dispose() {
     );
   }
 
-Widget _buildAddressForm() {
-  return Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      border: Border.all(color: Colors.green[300]!),
-      borderRadius: BorderRadius.circular(8),
-      color: Colors.white,
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+  Widget _buildAddressForm() {
+    return Form(
+      key: _formKey,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.green[300]!),
+          borderRadius: BorderRadius.circular(8),
+          color: Colors.white,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              isEditingAddress ? 'Edit Address' : 'Add New Address',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.green[700],
-              ),
+            Row(
+              children: [
+                Text(
+                  isEditingAddress ? 'Edit Address' : 'Add New Address',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green[700],
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      isAddingNewAddress = false;
+                      isEditingAddress = false;
+                      editingAddressId = null;
+                    });
+                    _clearAddressForm();
+                  },
+                  icon: const Icon(Icons.close),
+                  color: Colors.grey[600],
+                  iconSize: 20,
+                ),
+              ],
             ),
-            const Spacer(),
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  isAddingNewAddress = false;
-                  isEditingAddress = false;
-                  editingAddressId = null;
-                });
-                _clearAddressForm();
-              },
-              icon: const Icon(Icons.close),
-              color: Colors.grey[600],
-              iconSize: 20,
+            const SizedBox(height: 16),
+            
+            // Address Title/Type
+            _buildTextField(
+              titleController, 
+              '*Address Type (Home/Office/Other)', 
+              Icons.label,
+              isRequired: true
+            ),
+            const SizedBox(height: 12),
+            
+            // Full Name
+            _buildTextField(
+              nameController, 
+              '*Full Name', 
+              Icons.person,
+              isRequired: true
+            ),
+            const SizedBox(height: 12),
+            
+            // Phone Number
+            _buildTextField(
+              phoneController, 
+              '*Phone Number', 
+              Icons.phone, 
+              keyboardType: TextInputType.phone,
+              isRequired: true
+            ),
+            const SizedBox(height: 12),
+            
+            // Flat/House No/Building Name
+            _buildTextField(
+              flatHouseController, 
+              '*Flat/House No/Building Name', 
+              Icons.home,
+              isRequired: true
+            ),
+            const SizedBox(height: 12),
+            
+            // Floor (Optional)
+            _buildTextField(
+              floorController, 
+              'Floor (Optional)', 
+              Icons.layers,
+              isRequired: false
+            ),
+            const SizedBox(height: 12),
+            
+            // Area/Sector/Locality
+            _buildTextField(
+              areaController, 
+              '*Area/Sector/Locality', 
+              Icons.location_on,
+              isRequired: true
+            ),
+            const SizedBox(height: 12),
+            
+            // Nearby Landmark
+            _buildTextField(
+              landmarkController, 
+              '*Nearby Landmark', 
+              Icons.place,
+              isRequired: true
+            ),
+            const SizedBox(height: 12),
+            
+            // Complete Address
+            _buildTextField(
+              addressController, 
+              '*Complete Address (Min 25 characters)', 
+              Icons.home_outlined, 
+              maxLines: 3,
+              isRequired: true,
+              minLength: 25
+            ),
+            const SizedBox(height: 12),
+            
+            // City and State Row
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField(
+                    cityController, 
+                    '*City', 
+                    Icons.location_city,
+                    isRequired: true
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildTextField(
+                    stateController, 
+                    '*State', 
+                    Icons.map,
+                    isRequired: true
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            
+            // Pincode
+            _buildTextField(
+              pincodeController, 
+              '*Pincode', 
+              Icons.pin_drop, 
+              keyboardType: TextInputType.number,
+              isRequired: true
+            ),
+            const SizedBox(height: 20),
+            
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      setState(() {
+                        isAddingNewAddress = false;
+                        isEditingAddress = false;
+                        editingAddressId = null;
+                      });
+                      _clearAddressForm();
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.green[600]!),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.green[600]),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: isSavingAddress ? null : _saveAddress,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[600],
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: isSavingAddress
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            isEditingAddress ? 'Update Address' : 'Save Address',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        
-        // Full Name
-        _buildTextField(
-          nameController, 
-          '*Full Name', 
-          Icons.person,
-          isRequired: true
-        ),
-        const SizedBox(height: 12),
-        
-        // Phone Number
-        _buildTextField(
-          phoneController, 
-          '*Phone Number', 
-          Icons.phone, 
-          keyboardType: TextInputType.phone,
-          isRequired: true
-        ),
-        const SizedBox(height: 12),
-        
-        // Flat/House No/Building Name
-        _buildTextField(
-          flatHouseController, 
-          '*Flat/House No/Building Name', 
-          Icons.home,
-          isRequired: true
-        ),
-        const SizedBox(height: 12),
-        
-        // Floor (Optional)
-        _buildTextField(
-          floorController, 
-          'Floor (Optional)', 
-          Icons.layers,
-          isRequired: false
-        ),
-        const SizedBox(height: 12),
-        
-        // Area/Sector/Locality
-        _buildTextField(
-          areaController, 
-          '*Area/Sector/Locality', 
-          Icons.location_on,
-          isRequired: true
-        ),
-        const SizedBox(height: 12),
-        
-        // Nearby Landmark
-        _buildTextField(
-          landmarkController, 
-          '*Nearby Landmark', 
-          Icons.place,
-          isRequired: true
-        ),
-        const SizedBox(height: 12),
-        
-        // Complete Address
-        _buildTextField(
-          addressController, 
-          '*Complete Address (Min 25 characters)', 
-          Icons.home_outlined, 
-          maxLines: 3,
-          isRequired: true,
-          minLength: 25
-        ),
-        const SizedBox(height: 12),
-        
-        // City and State Row
-        Row(
-          children: [
-            Expanded(
-              child: _buildTextField(
-                cityController, 
-                '*City', 
-                Icons.location_city,
-                isRequired: true
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildTextField(
-                stateController, 
-                '*State', 
-                Icons.map,
-                isRequired: true
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        
-        // Pincode
-        _buildTextField(
-          pincodeController, 
-          '*Pincode', 
-          Icons.pin_drop, 
-          keyboardType: TextInputType.number,
-          isRequired: true
-        ),
-        const SizedBox(height: 20),
-        
-        // Action Buttons
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () {
-                  setState(() {
-                    isAddingNewAddress = false;
-                    isEditingAddress = false;
-                    editingAddressId = null;
-                  });
-                  _clearAddressForm();
-                },
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: Colors.green[600]!),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(color: Colors.green[600]),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: isSavingAddress ? null : _saveAddress,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[600],
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: isSavingAddress
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : Text(
-                        isEditingAddress ? 'Update Address' : 'Save Address',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12, // Smaller font size as requested
-                        ),
-                      ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
+      ),
+    );
+  }
 
-Widget _buildTextField(
-  TextEditingController controller,
-  String label,
-  IconData icon, {
-  TextInputType keyboardType = TextInputType.text,
-  int maxLines = 1,
-  bool isRequired = false,
-  int? minLength,
-}) {
-  return TextFormField(
-    controller: controller,
-    keyboardType: keyboardType,
-    maxLines: maxLines,
-    decoration: InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: Colors.green[600]),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+    bool isRequired = false,
+    int? minLength,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.green[600]),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.green[600]!),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.red[600]!),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey[300]!),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.green[600]!),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.red[600]!),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-    ),
-    validator: (value) {
-      String trimmedValue = value?.trim() ?? '';
-      
-      // Required field validation
-      if (isRequired && trimmedValue.isEmpty) {
-        return 'This field is required';
-      }
-      
-      // Skip further validation if field is optional and empty
-      if (!isRequired && trimmedValue.isEmpty) {
+      validator: (value) {
+        String trimmedValue = value?.trim() ?? '';
+        
+        // Required field validation
+        if (isRequired && trimmedValue.isEmpty) {
+          return 'This field is required';
+        }
+        
+        // Skip further validation if field is optional and empty
+        if (!isRequired && trimmedValue.isEmpty) {
+          return null;
+        }
+        
+        // Minimum length validation
+        if (minLength != null && trimmedValue.length < minLength) {
+          return 'Minimum $minLength characters required';
+        }
+        
+        // General minimum length (at least 2 characters for all required fields except phone/pincode)
+        if (isRequired && controller != phoneController && controller != pincodeController) {
+          if (trimmedValue.length < 2) {
+            return 'Please enter at least 2 characters';
+          }
+        }
+        
+        // Phone number validation
+        if (controller == phoneController && trimmedValue.isNotEmpty) {
+          if (!RegExp(r'^[0-9]{10}$').hasMatch(trimmedValue)) {
+            return 'Enter a valid 10-digit phone number';
+          }
+        }
+        
+        // Pincode validation
+        if (controller == pincodeController && trimmedValue.isNotEmpty) {
+          if (!RegExp(r'^[0-9]{6}$').hasMatch(trimmedValue)) {
+            return 'Enter a valid 6-digit pincode';
+          }
+        }
+
+        // Name validation (only letters and spaces)
+        if (controller == nameController && trimmedValue.isNotEmpty) {
+          if (!RegExp(r'^[a-zA-Z\s]{3,}$').hasMatch(trimmedValue)) {
+            return 'Enter a valid name';
+          }
+        }
+        
+        // City validation (only letters and spaces)
+        if (controller == cityController && trimmedValue.isNotEmpty) {
+          if (!RegExp(r'^[a-zA-Z\s]{3,}$').hasMatch(trimmedValue)) {
+            return 'Enter a valid city name';
+          }
+        }
+        
+        // State validation (only letters and spaces)
+        if (controller == stateController && trimmedValue.isNotEmpty) {
+          if (!RegExp(r'^[a-zA-Z\s]{3,}$').hasMatch(trimmedValue)) {
+            return 'Enter a valid state name';
+          }
+        }
+        
+        // Complete address special validation
+        if (controller == addressController && trimmedValue.isNotEmpty) {
+          if (trimmedValue.length < 25) {
+            return 'Enter complete address';
+          }
+          // Check if it's not just repeated characters or spaces
+          String cleanAddress = trimmedValue.replaceAll(RegExp(r'\s+'), ' ');
+          if (cleanAddress.length < 25) {
+            return 'Enter complete address (minimum 25 characters)';
+          }
+        }
+        
+        // Flat/House validation (alphanumeric allowed)
+        if (controller == flatHouseController && trimmedValue.isNotEmpty) {
+          if (!RegExp(r'^[a-zA-Z0-9\s\-\/]{2,}$').hasMatch(trimmedValue)) {
+            return 'Enter valid flat/house details';
+          }
+        }
+        
+        // Area/Sector/Locality validation
+        if (controller == areaController && trimmedValue.isNotEmpty) {
+          if (!RegExp(r'^[a-zA-Z0-9\s\-]{2,}$').hasMatch(trimmedValue)) {
+            return 'Enter valid area/sector';
+          }
+        }
+        
+        // Landmark validation
+        if (controller == landmarkController && trimmedValue.isNotEmpty) {
+          if (trimmedValue.length < 3) {
+            return 'Enter valid landmark';
+          }
+        }
+        
+        // Floor validation (optional, but if entered should be valid)
+        if (controller == floorController && trimmedValue.isNotEmpty) {
+          if (!RegExp(r'^[a-zA-Z0-9\s]{1,}$').hasMatch(trimmedValue)) {
+            return 'Enter valid floor details';
+          }
+        }
+        
         return null;
-      }
-      
-      // Minimum length validation
-      if (minLength != null && trimmedValue.length < minLength) {
-        return 'Minimum $minLength characters required';
-      }
-      
-      // General minimum length (at least 2 characters for all required fields except phone/pincode)
-      if (isRequired && controller != phoneController && controller != pincodeController) {
-        if (trimmedValue.length < 2) {
-          return 'Please enter at least 2 characters';
-        }
-      }
-      
-      // Phone number validation
-      if (controller == phoneController && trimmedValue.isNotEmpty) {
-        if (!RegExp(r'^[0-9]{10}$').hasMatch(trimmedValue)) {
-          return 'Enter a valid 10-digit phone number';
-        }
-      }
-      
-      // Pincode validation
-      if (controller == pincodeController && trimmedValue.isNotEmpty) {
-        if (!RegExp(r'^[0-9]{6}$').hasMatch(trimmedValue)) {
-          return 'Enter a valid 6-digit pincode';
-        }
-      }
-      
-      // Name validation (only letters and spaces)
-      if (controller == nameController && trimmedValue.isNotEmpty) {
-        if (!RegExp(r'^[a-zA-Z\s]{3,}$').hasMatch(trimmedValue)) {
-          return 'Enter a valid name ';
-        }
-      }
-      
-      // City validation (only letters and spaces)
-      if (controller == cityController && trimmedValue.isNotEmpty) {
-        if (!RegExp(r'^[a-zA-Z\s]{3,}$').hasMatch(trimmedValue)) {
-          return 'Enter a valid city name ';
-        }
-      }
-      
-      // State validation (only letters and spaces)
-      if (controller == stateController && trimmedValue.isNotEmpty) {
-        if (!RegExp(r'^[a-zA-Z\s]{3,}$').hasMatch(trimmedValue)) {
-          return 'Enter a valid state name';
-        }
-      }
-      
-      // Complete address special validation
-      if (controller == addressController && trimmedValue.isNotEmpty) {
-        if (trimmedValue.length < 25) {
-          return 'Enter complete address ';
-        }
-        // Check if it's not just repeated characters or spaces
-        String cleanAddress = trimmedValue.replaceAll(RegExp(r'\s+'), ' ');
-        if (cleanAddress.length < 25) {
-          return 'Enter complete address (minimum 25 characters)';
-        }
-      }
-      
-      // Flat/House validation (alphanumeric allowed)
-      if (controller == flatHouseController && trimmedValue.isNotEmpty) {
-        if (!RegExp(r'^[a-zA-Z0-9\s\-\/]{2,}$').hasMatch(trimmedValue)) {
-          return 'Enter valid flat/house details';
-        }
-      }
-      
-      // Area/Sector/Locality validation
-      if (controller == areaController && trimmedValue.isNotEmpty) {
-        if (!RegExp(r'^[a-zA-Z0-9\s\-]{2,}$').hasMatch(trimmedValue)) {
-          return 'Enter valid area/sector ';
-        }
-      }
-      
-      // Landmark validation
-      if (controller == landmarkController && trimmedValue.isNotEmpty) {
-        if (trimmedValue.length < 3) {
-          return 'Enter valid landmark ';
-        }
-      }
-      
-      // Floor validation (optional, but if entered should be valid)
-      if (controller == floorController && trimmedValue.isNotEmpty) {
-        if (!RegExp(r'^[a-zA-Z0-9\s]{1,}$').hasMatch(trimmedValue)) {
-          return 'Enter valid floor details';
-        }
-      }
-      
-      return null;
-    },
-  );
-}
-// Updated save address method with validation
-// Updated clear form method
-void _clearAddressForm() {
-  titleController.clear();
-  nameController.clear();
-  phoneController.clear();
-  flatHouseController.clear();
-  floorController.clear();
-  areaController.clear();
-  landmarkController.clear();
-  addressController.clear();
-  cityController.clear();
-  stateController.clear();
-  pincodeController.clear();
-}
+      },
+    );
+  }
+
+  void _clearAddressForm() {
+    titleController.clear();
+    nameController.clear();
+    phoneController.clear();
+    flatHouseController.clear();
+    floorController.clear();
+    areaController.clear();
+    landmarkController.clear();
+    addressController.clear();
+    cityController.clear();
+    stateController.clear();
+    pincodeController.clear();
+  }
+
   void _showAddressSelectionDialog() {
     showDialog(
       context: context,
@@ -1216,7 +1297,7 @@ void _clearAddressForm() {
                     Navigator.pop(context);
                   },
                   title: Text(address.name),
-                  subtitle: Text('${address.title}\n${address.fullAddress}'),
+                  subtitle: Text('${address.title}\n${address.fullAddressFormatted}'),
                   secondary: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -1442,7 +1523,6 @@ void _clearAddressForm() {
           else ...[
             _buildSummaryRow('Subtotal', 'BHD${subtotal.toStringAsFixed(2)}'),
             _buildSummaryRow('Delivery Fee', 'BHD${deliveryFee.toStringAsFixed(2)}'),
-            _buildSummaryRow('Tax (${(taxRate * 100).toInt()}%)', 'BHD${taxAmount.toStringAsFixed(2)}'),
             const Divider(thickness: 1),
             _buildSummaryRow('Total Amount', 'BHD${finalTotal.toStringAsFixed(2)}', isTotal: true),
           ],
@@ -1689,10 +1769,10 @@ class Address {
     required this.city,
     required this.state,
     required this.pincode,
-    this.isDefault = false,
+    required this.isDefault,
   });
 
-  String get fullAddress => '$address, $city, $state - $pincode';
+  String get fullAddressFormatted => '$address, $city, $state - $pincode';
 
   factory Address.fromJson(Map<String, dynamic> json) {
     return Address(

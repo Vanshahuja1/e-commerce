@@ -527,7 +527,7 @@ Future<void> _fetchStats() async {
   if (token == null) return;
   try {
     final res = await http.get(
-      Uri.parse('$_baseUrl/admin/orders?limit=100'),
+      Uri.parse('$_baseUrl/orders?limit=100'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -1208,10 +1208,9 @@ Future<void> _fetchStats() async {
             const SizedBox(height: 40),
           ],
           _sidebarNavItem(Icons.dashboard, "Dashboard", 0, showExpanded),
-         _sidebarNavItem(Icons.people, "Users", 1, showExpanded),
+          _sidebarNavItem(Icons.people, "Users", 1, showExpanded),
           _sidebarNavItem(Icons.inventory, "Products", 2, showExpanded),
-          _sidebarNavItem(
-              Icons.receipt_long, "Orders & Invoices", 3, showExpanded),
+          _sidebarNavItem(Icons.receipt, "Orders", 3, showExpanded),
           _sidebarNavItem(
               Icons.add_shopping_cart, "Add Products", 4, showExpanded),
         ],
@@ -1475,7 +1474,7 @@ Future<void> _fetchStats() async {
   }
 
   // --- ADD PRODUCT TAB ---
-  Widget _buildAddProductTab() {
+Widget _buildAddProductTab() {
   return Padding(
     padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
     child: SingleChildScrollView(
@@ -1691,119 +1690,121 @@ Future<void> _fetchStats() async {
 
                   // Category and Unit Row
                   Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              "Category *",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF151A24),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: DropdownButtonFormField<String>(
-                                value: _selectedProductCategory,
-                                dropdownColor: const Color(0xFF23293A),
-                                style: const TextStyle(color: Colors.white),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 16,
-                                  ),
-                                ),
-                                items: [
-                                  'Fruits',
-                                  'Vegetables',
-                                  'Herbs & Lettuce',
-                                  'Dried Fruit',
-                                  'Other'
-                                ].map((String category) {
-                                  return DropdownMenuItem<String>(
-                                    value: category,
-                                    child: Text(category),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    _selectedProductCategory = newValue!;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              "Unit *",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF151A24),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: DropdownButtonFormField<String>(
-                                value: _selectedProductUnit,
-                                dropdownColor: const Color(0xFF23293A),
-                                style: const TextStyle(color: Colors.white),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 16,
-                                  ),
-                                ),
-                                items: [
-                                  'kg',
-                                  'g',
-                                  'lb',
-                                  'oz',
-                                  'piece',
-                                  'pack',
-                                  'bottle',
-                                  'box',
-                                  'bag',
-                                  'unit'
-                                ].map((String unit) {
-                                  return DropdownMenuItem<String>(
-                                    value: unit,
-                                    child: Text(unit),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    _selectedProductUnit = newValue!;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+  children: [
+    Flexible(
+      flex: 1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Category *",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF151A24),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: DropdownButtonFormField<String>(
+              value: _selectedProductCategory,
+              dropdownColor: const Color(0xFF23293A),
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 16,
+                ),
+              ),
+              items: [
+                'Fruits',
+                'Vegetables',
+                'Herbs ',
+                'Dried Fruit',
+                'Other'
+              ].map((String category) {
+                return DropdownMenuItem<String>(
+                  value: category,
+                  child: Text(category),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedProductCategory = newValue!;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+    ),
+    const SizedBox(width: 12), // Reduced from 20 to 12
+    Flexible(
+      flex: 1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Unit *",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF151A24),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: DropdownButtonFormField<String>(
+              value: _selectedProductUnit,
+              dropdownColor: const Color(0xFF23293A),
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+              ),
+              items: [
+                'kg',
+                'g',
+                'lb',
+                'oz',
+                'piece',
+                'pack',
+                'bottle',
+                'box',
+                'bag',
+                'unit'
+              ].map((String unit) {
+                return DropdownMenuItem<String>(
+                  value: unit,
+                  child: Text(unit),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedProductUnit = newValue!;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+    ),
+  ],
+    ),
                   const SizedBox(height: 20),
 
                   // ------ Discount, Tax, VAT ------
