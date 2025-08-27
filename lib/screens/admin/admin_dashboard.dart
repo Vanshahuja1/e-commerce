@@ -278,6 +278,13 @@ class _AdminDashboardState extends State<AdminDashboard> with TickerProviderStat
   void initState() {
     super.initState();
     _loadAllData();
+    // Poll orders periodically to simulate real-time updates
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 10));
+      if (!mounted) return false;
+      await _fetchOrders();
+      return true; // keep polling while widget is mounted
+    });
     _userSearchController.addListener(() {
       setState(() {
         _userSearchQuery = _userSearchController.text;
@@ -2728,7 +2735,7 @@ Widget _productFilterDropdown() {
                         Row(
                           children: [
                             Text(
-                              '\$${product.price.toStringAsFixed(2)}',
+                              'BHD ${product.price.toStringAsFixed(2)}',
                               style: TextStyle(
                                 color: product.isAvailable
                                     ? Colors.green
@@ -2936,7 +2943,7 @@ Widget _productFilterDropdown() {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '\$${product.price.toStringAsFixed(2)}',
+                              'BHD ${product.price.toStringAsFixed(2)}',
                               style: TextStyle(
                                 color: product.isAvailable
                                     ? Colors.green
@@ -3256,7 +3263,7 @@ Widget _productFilterDropdown() {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '\$${order.totalAmount.toStringAsFixed(2)}',
+                      'BHD ${order.totalAmount.toStringAsFixed(2)}',
                       style: const TextStyle(
                         color: Colors.green,
                         fontWeight: FontWeight.bold,
@@ -3279,18 +3286,6 @@ Widget _productFilterDropdown() {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.person, size: 16),
-                    label: const Text("View Customer"),
-                    onPressed: () => _viewUserDetails(order.userId),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent.withOpacity(0.2),
-                      foregroundColor: Colors.blueAccent,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.download, size: 16),
@@ -3458,7 +3453,7 @@ class _UserDetailsDialog extends StatelessWidget {
                 Expanded(
                   child: _statCard(
                     'Total Spent',
-                    '\$${userDetails.totalSpent.toStringAsFixed(2)}',
+                    'BHD ${userDetails.totalSpent.toStringAsFixed(2)}',
                     Icons.attach_money,
                     Colors.green,
                   ),
@@ -3521,7 +3516,7 @@ class _UserDetailsDialog extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      '\$${order.totalAmount.toStringAsFixed(2)}',
+                                      'BHD ${order.totalAmount.toStringAsFixed(2)}',
                                       style: const TextStyle(
                                         color: Colors.green,
                                         fontWeight: FontWeight.bold,

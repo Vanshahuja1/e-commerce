@@ -285,13 +285,17 @@ class DiscountScreenState extends State<DiscountScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 12),
-              Text(
-                'Discounts',
-                style: TextStyle(
-                  fontSize: screenWidth > 600 ? 28 : 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green.shade700,
-                  letterSpacing: 1.2,
+               Center(
+                child: Text(
+                  'AMAZING DISCOUNTS',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: screenWidth > 600 ? 28 : 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                    letterSpacing: 1.2,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),

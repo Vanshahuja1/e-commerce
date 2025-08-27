@@ -6,6 +6,8 @@ import '/widgets/header.dart';
 import '/services/auth_service.dart';
 import '/widgets/products.dart'; // Import the ProductsSection
 
+
+
 class ShowcaseScreen extends StatefulWidget {
   const ShowcaseScreen({Key? key}) : super(key: key);
 
@@ -244,11 +246,9 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                   _buildProductDetailsSection(),
                   const SizedBox(height: 20),
 
-                  // Quantity Selector and Total Price (only if available)
+                  // Quantity Selector (only if available)
                   if (product!['isAvailable'] == true) ...[
                     _buildQuantitySelector(),
-                    const SizedBox(height: 16),
-                    _buildTotalPriceSection(),
                   ],
                 ],
               ),
@@ -502,10 +502,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
             _buildDetailRow('Tax', '${product!['tax']}%'),
           if (product!['hasVAT'] == true)
             _buildDetailRow('VAT', 'Applicable'),
-          if (product!['createdAt'] != null)
-            _buildDetailRow('Listed On', _formatDate(product!['createdAt'].toString())),
-          if (product!['updatedAt'] != null)
-            _buildDetailRow('Last Updated', _formatDate(product!['updatedAt'].toString())),
         ],
       ),
     );
@@ -574,133 +570,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     );
   }
 
-  Widget _buildTotalPriceSection() {
-    double discount = double.tryParse(product!['discount']?.toString() ?? '0') ?? 0;
-    double tax = double.tryParse(product!['tax']?.toString() ?? '0') ?? 0;
-    bool hasDiscount = discount > 0;
-    bool hasTax = tax > 0;
-    bool hasVAT = product!['hasVAT'] == true;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.green.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green.shade200),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Subtotal:',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-              Text(
-                'BHD${_calculateSubtotal()}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-            ],
-          ),
-          if (hasDiscount) ...[
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Discount (${discount.toInt()}%):',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.red.shade600,
-                  ),
-                ),
-                Text(
-                  '-BHD${_calculateDiscountAmount()}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.red.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (hasTax) ...[
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Tax (${tax.toInt()}%):',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                Text(
-                  'BHD${_calculateTaxAmount()}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (hasVAT) ...[
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'VAT:',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                Text(
-                  'Included',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          const Divider(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Total Price:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade800,
-                ),
-              ),
-              Text(
-                'BHD${_calculateTotalPrice()}',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green.shade700,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  
 
   Widget _buildBottomButton() {
     bool isAvailable = product!['isAvailable'] == true;
