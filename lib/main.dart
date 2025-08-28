@@ -184,7 +184,7 @@ class GroceryApp extends StatelessWidget {
       
 
       case AppRoutes.discount:
-        return _createRoute(const DiscountScreen());
+        return _createRoute(const DiscountScreen(),settings: settings);
      
 
       case AppRoutes.adminDashbaord:

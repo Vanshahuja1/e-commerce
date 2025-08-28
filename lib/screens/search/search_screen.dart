@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '/services/cart_service.dart';
 import '/widgets/header.dart';
 import '/models/user_model.dart';
 import '/services/auth_service.dart';
 import '/widgets/footer.dart';
+
 class SearchScreen extends StatefulWidget {
   final bool isGuestMode;
   
@@ -32,12 +34,33 @@ class _SearchScreenState extends State<SearchScreen> {
   int _cartItemCount = 0;
   Map<String, int> cartQuantities = {}; 
   bool _hasHandledArgsAndFetched = false;
+  bool _isLoggedIn = false; // Auth token based login status
 
   @override
   void initState() {
     super.initState();
-    _loadUser();
-    _loadCartCount();
+    _initializeScreen();
+  }
+
+  Future<void> _initializeScreen() async {
+    await _checkLoginStatus(); // Check login status first
+    await _loadUser();
+    await _loadCartCount();
+  }
+
+  // Updated method to properly check login status using auth token
+  Future<void> _checkLoginStatus() async {
+    final token = await getToken();
+    setState(() {
+      _isLoggedIn = token != null && token.isNotEmpty;
+    });
+    print('DEBUG: Login status checked - isLoggedIn: $_isLoggedIn, token: ${token != null ? "exists" : "null"}');
+  }
+
+  // Get auth token from SharedPreferences
+  Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_token');
   }
 
  @override
@@ -72,7 +95,6 @@ void didChangeDependencies() {
   }
 }
   
-
   Future<void> _loadUser() async {
     _currentUser = await AuthService.getCurrentUser();
     if (mounted) setState(() {});
@@ -147,6 +169,12 @@ void didChangeDependencies() {
   }
 
   Future<void> addItemToCart(dynamic product) async {
+    // Check login status before adding to cart
+    if (!_isLoggedIn) {
+      Navigator.pushNamed(context, '/login');
+      return;
+    }
+
     try {
       await CartService.addToCart(Map<String, dynamic>.from(product));
       String productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
@@ -175,6 +203,12 @@ void didChangeDependencies() {
   }
 
   Future<void> removeItemFromCart(dynamic product) async {
+    // Check login status before removing from cart
+    if (!_isLoggedIn) {
+      Navigator.pushNamed(context, '/login');
+      return;
+    }
+
     try {
       String productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
       int currentQuantity = cartQuantities[productId] ?? 0;
@@ -388,6 +422,7 @@ void didChangeDependencies() {
   }
 
   Future<void> _handleRefresh() async {
+    await _checkLoginStatus(); // Re-check login status on refresh
     await fetchProducts();
     await _loadCartCount();
   }
@@ -399,14 +434,25 @@ void didChangeDependencies() {
       appBar: Header(
         cartItemCount: _cartItemCount,
         currentUser: _currentUser,
+        isLoggedIn: _isLoggedIn, // Pass the auth token based login status
         onCartTap: () async {
-          await Navigator.pushNamed(context, '/cart');
-          _loadCartCount();
+          if (!_isLoggedIn) {
+            Navigator.pushNamed(context, '/login');
+          } else {
+            await Navigator.pushNamed(context, '/cart');
+            _loadCartCount();
+          }
         },
-        onProfileTap: () => Navigator.pushNamed(context, '/profile'),
-        // onSellerTap REMOVED
+        onProfileTap: () async {
+          if (!_isLoggedIn) {
+            Navigator.pushNamed(context, '/login');
+          } else {
+            Navigator.pushNamed(context, '/profile');
+          }
+        },
         onLogout: () async {
           await AuthService.logout();
+          await _checkLoginStatus(); // Update login status after logout
           if (mounted) {
             Navigator.pushReplacementNamed(context, '/login');
           }
@@ -580,12 +626,18 @@ void didChangeDependencies() {
       ),
       bottomNavigationBar: Footer(
         currentUser: _currentUser,
-        isLoggedIn: _currentUser != null,
-        currentIndex: 1, // Set to 1 for search/categories tab
+        isLoggedIn: _isLoggedIn,
+        currentIndex: 1,
         onHomeTap: () => Navigator.pushReplacementNamed(context, '/home'),
         onCategoriesTap: () {}, // Already on search/categories screen
         onDiscountTap: () => Navigator.pushNamed(context, '/discount'),
-        onProfileTap: () => Navigator.pushNamed(context, '/profile'),
+        onProfileTap: () async {
+          if (!_isLoggedIn) {
+            Navigator.pushNamed(context, '/login');
+          } else {
+            Navigator.pushNamed(context, '/profile');
+          }
+        },
       ),
     );
   }
@@ -706,15 +758,15 @@ void didChangeDependencies() {
 
     double _getChildAspectRatio(double screenWidth) {
     if (screenWidth > 1200) {
-      return 0.75; // Increased from 0.85
+      return 0.75;
     } else if (screenWidth > 900) {
-      return 0.72; // Increased from 0.82
+      return 0.72;
     } else if (screenWidth > 600) {
-      return 0.70; // Increased from 0.80
+      return 0.70;
     } else if (screenWidth > 400) {
-      return 0.68; // Increased from 0.78
+      return 0.68;
     } else {
-      return 0.65; // Increased from 0.75
+      return 0.65;
     }
   }
 
@@ -733,7 +785,7 @@ Widget _buildProductCard(dynamic product, double screenWidth) {
 
     return GestureDetector(
       onTap: () {
-        if (widget.isGuestMode) {
+        if (!_isLoggedIn) {
           Navigator.pushNamed(context, '/login');
         } else {
           Navigator.pushNamed(
@@ -760,7 +812,7 @@ Widget _buildProductCard(dynamic product, double screenWidth) {
           children: [
             // Image Section 
             Expanded(
-              flex: 5, // Back to original
+              flex: 5,
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -792,19 +844,19 @@ Widget _buildProductCard(dynamic product, double screenWidth) {
                     ),
                     if (hasDiscount)
                       Positioned(
-                        top: 4, // Reduced padding
-                        left: 4, // Reduced padding
+                        top: 4,
+                        left: 4,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), // Reduced padding
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                           decoration: BoxDecoration(
                             color: Colors.red,
-                            borderRadius: BorderRadius.circular(6), // Reduced radius
+                            borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             '${discount.toInt()}% OFF',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: screenWidth > 600 ? 7 : 6, // Reduced font size
+                              fontSize: screenWidth > 600 ? 7 : 6,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -812,19 +864,19 @@ Widget _buildProductCard(dynamic product, double screenWidth) {
                       ),
                     if (hasVAT)
                       Positioned(
-                        top: 4, // Reduced padding
-                        right: 4, // Reduced padding
+                        top: 4,
+                        right: 4,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1), // Reduced padding
+                          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                           decoration: BoxDecoration(
                             color: Colors.blue.shade600,
-                            borderRadius: BorderRadius.circular(4), // Reduced radius
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             'VAT',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: screenWidth > 600 ? 6 : 5, // Reduced font size
+                              fontSize: screenWidth > 600 ? 6 : 5,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -836,11 +888,11 @@ Widget _buildProductCard(dynamic product, double screenWidth) {
             ),
             // Product Details Section 
             Expanded(
-              flex: 4, // Back to original
+              flex: 4,
               child: Padding(
                 padding: EdgeInsets.symmetric(
-                    horizontal: screenWidth > 600 ? 10 : 8, // Back to original
-                    vertical: screenWidth > 600 ? 8 : 6), // Back to original
+                    horizontal: screenWidth > 600 ? 10 : 8,
+                    vertical: screenWidth > 600 ? 8 : 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -852,32 +904,32 @@ Widget _buildProductCard(dynamic product, double screenWidth) {
                           child: Text(
                             product['name']?.toString() ?? 'Unknown Product',
                             style: TextStyle(
-                              fontSize: screenWidth > 600 ? 11 : 9, // Slightly reduced
+                              fontSize: screenWidth > 600 ? 11 : 9,
                               fontWeight: FontWeight.w600,
                               color: Colors.black87,
-                              height: 1.1, // Reduced line height
+                              height: 1.1,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 4), // Reduced spacing
+                        const SizedBox(width: 4),
                         _buildAddButton(product, quantity, screenWidth),
                       ],
                     ),
-                    const SizedBox(height: 1), // Reduced spacing
+                    const SizedBox(height: 1),
                     // Quantity/Weight - Made more compact
                     Text(
                       '${product['weight'] ?? product['quantity'] ?? '500 g'} - Approx. ${product['pieces'] ?? '4-5pcs'}',
                       style: TextStyle(
-                        fontSize: screenWidth > 600 ? 8 : 7, // Reduced font size
+                        fontSize: screenWidth > 600 ? 8 : 7,
                         color: Colors.grey.shade600,
                         fontWeight: FontWeight.normal,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2), // Reduced spacing
+                    const SizedBox(height: 2),
                     // Price Section - Made more compact
                     hasDiscount
                         ? Column(
@@ -887,7 +939,7 @@ Widget _buildProductCard(dynamic product, double screenWidth) {
                               Text(
                                 'BHD ${originalPrice.toStringAsFixed(3)}',
                                 style: TextStyle(
-                                  fontSize: screenWidth > 600 ? 9 : 8, // Reduced font size
+                                  fontSize: screenWidth > 600 ? 9 : 8,
                                   color: Colors.grey.shade500,
                                   decoration: TextDecoration.lineThrough,
                                   decorationColor: Colors.grey.shade500,
@@ -896,7 +948,7 @@ Widget _buildProductCard(dynamic product, double screenWidth) {
                               Text(
                                 'BHD ${discountedPrice.toStringAsFixed(3)}',
                                 style: TextStyle(
-                                  fontSize: screenWidth > 600 ? 12 : 10, // Reduced font size
+                                  fontSize: screenWidth > 600 ? 12 : 10,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.red,
                                 ),
@@ -906,7 +958,7 @@ Widget _buildProductCard(dynamic product, double screenWidth) {
                         : Text(
                             'BHD ${discountedPrice.toStringAsFixed(3)}',
                             style: TextStyle(
-                              fontSize: screenWidth > 600 ? 12 : 10, // Reduced font size
+                              fontSize: screenWidth > 600 ? 12 : 10,
                               fontWeight: FontWeight.bold,
                               color: Colors.black,
                             ),
@@ -920,6 +972,7 @@ Widget _buildProductCard(dynamic product, double screenWidth) {
       ),
     );
   }
+
   Widget _buildAddButton(dynamic product, int quantity, double screenWidth) {
     double buttonSize = screenWidth > 600 ? 22 : 18;
     double iconSize = screenWidth > 600 ? 13 : 11;

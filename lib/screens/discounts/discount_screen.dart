@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/cart_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/footer.dart';
@@ -32,19 +33,36 @@ class DiscountScreenState extends State<DiscountScreen> {
   String? error;
   Map<String, int> cartQuantities = {};
   int _cartItemCount = 0;
+  bool _isUserLoggedIn = false; // Internal state to track actual login status
 
   @override
   void initState() {
     super.initState();
+    _checkAuthStatus();
     fetchDiscountProducts();
-    if (!widget.isGuestMode) {
+  }
+
+  // Check if user is actually logged in by checking auth token
+  Future<void> _checkAuthStatus() async {
+    final token = await _getToken();
+    setState(() {
+      _isUserLoggedIn = token != null && token.isNotEmpty;
+    });
+    
+    // Only load cart data if user is actually logged in
+    if (_isUserLoggedIn && !widget.isGuestMode) {
       loadCartQuantities();
       _loadCartCount();
     }
   }
 
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_token');
+  }
+
   Future<void> _loadCartCount() async {
-    if (!widget.isLoggedIn) {
+    if (!_isUserLoggedIn) {
       setState(() => _cartItemCount = 0);
       return;
     }
@@ -60,6 +78,8 @@ class DiscountScreenState extends State<DiscountScreen> {
   }
 
   Future<void> loadCartQuantities() async {
+    if (!_isUserLoggedIn) return;
+    
     try {
       final cartItems = await CartService.getCartItems();
       setState(() {
@@ -80,8 +100,9 @@ class DiscountScreenState extends State<DiscountScreen> {
   }
 
   Future<void> refreshProducts() async {
+    await _checkAuthStatus(); // Re-check auth status on refresh
     await fetchDiscountProducts();
-    if (!widget.isGuestMode) {
+    if (_isUserLoggedIn && !widget.isGuestMode) {
       await loadCartQuantities();
       await _loadCartCount();
     }
@@ -130,10 +151,13 @@ class DiscountScreenState extends State<DiscountScreen> {
   }
 
   Future<void> addItemToCart(dynamic product) async {
-    if (widget.isGuestMode || !widget.isLoggedIn) {
+    // Check auth token before adding to cart
+    final token = await _getToken();
+    if (token == null || token.isEmpty) {
       Navigator.pushNamed(context, '/login');
       return;
     }
+    
     try {
       await CartService.addToCart(Map<String, dynamic>.from(product));
       await fetchDiscountProducts();
@@ -165,6 +189,13 @@ class DiscountScreenState extends State<DiscountScreen> {
   }
 
   Future<void> removeItemFromCart(dynamic product) async {
+    // Check auth token before removing from cart
+    final token = await _getToken();
+    if (token == null || token.isEmpty) {
+      Navigator.pushNamed(context, '/login');
+      return;
+    }
+    
     try {
       String productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
       int currentQuantity = cartQuantities[productId] ?? 0;
@@ -203,16 +234,18 @@ class DiscountScreenState extends State<DiscountScreen> {
     }
   }
 
-  void _handleCartTap() {
-    if (widget.isLoggedIn) {
+  Future<void> _handleCartTap() async {
+    final token = await _getToken();
+    if (token != null && token.isNotEmpty) {
       Navigator.pushNamed(context, '/cart');
     } else {
       Navigator.pushNamed(context, '/login');
     }
   }
 
-  void _handleProfileTap() {
-    if (widget.isLoggedIn) {
+  Future<void> _handleProfileTap() async {
+    final token = await _getToken();
+    if (token != null && token.isNotEmpty) {
       if (widget.currentUser?.userType == 'admin') {
         Navigator.pushNamed(context, '/admin');
       } else {
@@ -236,6 +269,19 @@ class DiscountScreenState extends State<DiscountScreen> {
     refreshProducts();
   }
 
+  Future<void> _handleCardTap(dynamic product) async {
+    final token = await _getToken();
+    if (token != null && token.isNotEmpty) {
+      Navigator.pushNamed(
+        context,
+        '/showcase',
+        arguments: product,
+      );
+    } else {
+      Navigator.pushNamed(context, '/login');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -243,7 +289,7 @@ class DiscountScreenState extends State<DiscountScreen> {
       appBar: Header(
         cartItemCount: _cartItemCount,
         currentUser: widget.currentUser,
-        isLoggedIn: widget.isLoggedIn,
+        isLoggedIn: _isUserLoggedIn, // Use internal state instead of widget.isLoggedIn
         onCartTap: _handleCartTap,
         onProfileTap: _handleProfileTap,
         onLogout: widget.onLogout ?? () {},
@@ -265,7 +311,7 @@ class DiscountScreenState extends State<DiscountScreen> {
       ),
       bottomNavigationBar: Footer(
         currentUser: widget.currentUser,
-        isLoggedIn: widget.isLoggedIn,
+        isLoggedIn: _isUserLoggedIn, // Use internal state instead of widget.isLoggedIn
         onHomeTap: _handleHomeTap,
         onCategoriesTap: _handleCategoriesTap,
         onDiscountTap: _handleDiscountTap,
@@ -420,17 +466,7 @@ class DiscountScreenState extends State<DiscountScreen> {
     bool hasDiscount = discount > 0;
 
     return GestureDetector(
-      onTap: () {
-        if (widget.isGuestMode) {
-          Navigator.pushNamed(context, '/login');
-        } else {
-          Navigator.pushNamed(
-            context,
-            '/showcase',
-            arguments: product,
-          );
-        }
-      },
+      onTap: () => _handleCardTap(product), // Use the new method that checks auth token
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
