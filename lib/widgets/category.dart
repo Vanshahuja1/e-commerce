@@ -6,59 +6,52 @@ class CategorySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<String> trails = [
-      'All',
-      'Fresh Fruit',
-      'Vegetables',
-      'Herbs & Lettuce',
-      'Dried Fruit',
-    ];
 
     final List<Map<String, dynamic>> categories = [
-      {
-        'name': 'All',
-        'image': 'assets/images/fruits.png',
-        'color': const Color.fromARGB(255, 227, 42, 42),
+ {
+        'name': 'Savory',
+        'image': 'assets/images/images.png',
+        'color': const Color.fromARGB(255, 245, 176, 112),
       },
       {
-        'name': 'Banana',
-        'image': 'assets/images/banana.png',
-        'color': const Color.fromARGB(255, 247, 222, 2),
+        'name': 'Namkeen',
+        'image': 'assets/images/images (1).png',
+        'color': const Color.fromARGB(255, 223, 238, 142),
       },
       {
-        'name': 'Apple',
-        'image': 'assets/images/apple.png',
-        'color': const Color.fromARGB(255, 12, 99, 18),
+        'name': 'Sweet',
+        'image': 'assets/images/images (2).jpg',
+        'color': const Color.fromARGB(195, 210, 255, 250),
+      },
+     
+       {
+        'name': 'Travel Pack Combo',
+        'image': 'assets/images/travelpack.png',
+       'color': const Color.fromARGB(255, 255, 211, 229),
       },
       {
-        'name': 'Berries',
-        'image': 'assets/images/berries1.png',
-        'color': const Color.fromARGB(255, 61, 8, 8),
+        'name': 'Value Pack Offers',
+        'image': 'assets/images/valuepack.png',
+       'color': const Color.fromARGB(255, 200, 252, 221),
       },
       {
-        'name': 'Citrus',
-        'image': 'assets/images/citrus1.png',
-        'color': const Color.fromARGB(255, 250, 47, 1),
+        'name': 'Gift Packs',
+        'image': 'assets/images/giftpack.png',
+       'color': const Color.fromARGB(255, 233, 218, 255),
       },
-      {
-        'name': 'Melons',
-        'image': 'assets/images/melons1.png',
-        'color': const Color.fromARGB(255, 170, 245, 7),
-      },
+     
+     
     ];
 
     //  Mapping of specific items to broader categories
     final Map<String, String> categoryMapping = {
-      'Banana': 'Fruits',
-      'Apple': 'Fruits',
-      'Berries': 'Fruits',
-      'Citrus': 'Fruits',
-      'Melons': 'Fruits',
-      'Fresh Fruit': 'Fruits',
-      'Vegetables': 'Vegetables',
-      'Herbs & Lettuce': 'Herbs & Lettuce',
-      'Dried Fruit': 'Dried Fruit',
-      // 'All' will be handled separately
+      'Savory': 'Savory',
+      'Namkeen': 'Namkeen',
+      'Sweets': 'Sweets',
+      'Combo': 'Travel Pack Combo',
+      'Value Pack Offers': 'Value Pack Offers',
+      'Gift Packs': 'Gift Packs',
+     
     };
 
     //  Helper to resolve the mapped category or fallback
@@ -71,45 +64,7 @@ class CategorySection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          //  Top Trail Row with mapped navigation logic
-          Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: trails.map((item) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: GestureDetector(
-                      onTap: () {
-                        if (item == 'All') {
-                          Navigator.pushNamed(context, AppRoutes.search);
-                        } else {
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.search,
-                            arguments: {
-                              'category': resolveCategory(item),
-                            },
-                          );
-                        }
-                      },
-                      child: Text(
-                        item,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-
-          //  Category Icon Row with the same mapping logic
+          //  Category Icon Row
           SizedBox(
             height: 90,
             child: ListView.builder(
@@ -124,17 +79,11 @@ class CategorySection extends StatelessWidget {
                   margin: const EdgeInsets.only(right: 2),
                   child: GestureDetector(
                     onTap: () {
-                      if (name == 'All') {
-                        Navigator.pushNamed(context, AppRoutes.search);
-                      } else {
-                        Navigator.pushNamed(
-                          context,
-                          AppRoutes.search,
-                          arguments: {
-                            'category': resolveCategory(name),
-                          },
-                        );
-                      }
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.search,
+                        arguments: {'category': name},
+                      );
                     },
                     child: Column(
                       mainAxisSize: MainAxisSize.min,

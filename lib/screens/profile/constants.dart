@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppConstants {
-  static const String baseUrl = 'https://backend-ecommerce-app-co1r.onrender.com/api';
+  static const String baseUrl = 'https://e-com-backend-x67v.onrender.com/api';
   
   // Colors
   static const Color primaryColor = Color(0xFF059669);
@@ -23,10 +23,7 @@ class AppConstants {
   
   // Categories and Units
   static const List<String> categories = [
-    'Fruits', 'Vegetables', 'Dairy', 'Grains & Cereals', 'Pulses & Legumes',
-    'Spices & Herbs', 'Cooking Oils', 'Beverages', 'Snacks & Processed',
-    'Condiments & Sauces', 'Seafood & Meat', 'Bakery', 'Frozen Foods',
-    'Household Items'
+    'savory', 'namkeen', 'sweets', 'travel pack combo',
   ];
   
   static const List<String> units = [

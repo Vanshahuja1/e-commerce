@@ -50,7 +50,7 @@ class AdminService {
   };
 
   static const String _baseUrl =
-      'https://backend-ecommerce-app-co1r.onrender.com/api';
+      'https://e-com-backend-x67v.onrender.com/api';
 
   static const Duration _timeout = Duration(seconds: 30);
 
@@ -131,7 +131,7 @@ class AdminService {
     try {
       // Use the regular orders endpoint with a high limit to get all orders
       final response = await http.get(
-        Uri.parse('$_baseUrl/orders?limit=1000'),
+        Uri.parse('$_baseUrl/admin/orders?limit=1000'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

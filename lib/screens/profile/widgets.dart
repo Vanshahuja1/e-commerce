@@ -537,7 +537,7 @@ class ItemCard extends StatelessWidget {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    'BHD$itemPrice/$itemUnit',
+                                    '₹$itemPrice/$itemUnit',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
@@ -574,10 +574,20 @@ class ItemCard extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(16),
                                       border: Border.all(color: AppConstants.borderLight),
                                     ),
-                                    child: const Icon(
-                                      Icons.more_vert_rounded,
-                                      color: AppConstants.textSecondary,
-                                      size: 16,
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.menu,
+                                        color: AppConstants.textSecondary,
+                                        size: 16,
+                                      ),
+                                      onPressed: () {
+                                        final scaffoldState = Scaffold.maybeOf(context);
+                                        if (scaffoldState?.hasDrawer ?? false) {
+                                          scaffoldState!.openDrawer();
+                                        } else {
+                                          Navigator.pushNamed(context, '/profile');
+                                        }
+                                      },
                                     ),
                                   ),
                                 ),

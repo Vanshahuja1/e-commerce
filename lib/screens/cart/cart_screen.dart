@@ -70,7 +70,7 @@ class _CartScreenState extends State<CartScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading cart: ${e.toString()}'),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: Colors.red.shade400,
           ),
         );
       }
@@ -98,7 +98,7 @@ class _CartScreenState extends State<CartScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Quantity updated to $newQuantity'),
-            backgroundColor: Colors.green.shade600,
+            backgroundColor: Colors.red.shade400,
             duration: const Duration(milliseconds: 800),
           ),
         );
@@ -108,7 +108,7 @@ class _CartScreenState extends State<CartScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error updating quantity: ${e.toString()}'),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: Colors.red.shade400,
           ),
         );
       }
@@ -137,7 +137,7 @@ class _CartScreenState extends State<CartScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('$productName removed from cart'),
-            backgroundColor: Colors.green.shade600,
+            backgroundColor: Colors.red.shade400,
             action: SnackBarAction(
               label: 'UNDO',
               textColor: Colors.white,
@@ -156,7 +156,7 @@ class _CartScreenState extends State<CartScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error removing item: ${e.toString()}'),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: Colors.red.shade400,
           ),
         );
       }
@@ -199,7 +199,7 @@ class _CartScreenState extends State<CartScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: const Text('Cart cleared successfully'),
-                      backgroundColor: Colors.green.shade600,
+                      backgroundColor: Colors.red.shade400,
                     ),
                   );
                 }
@@ -208,7 +208,7 @@ class _CartScreenState extends State<CartScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Error clearing cart: ${e.toString()}'),
-                      backgroundColor: Colors.red.shade600,
+                      backgroundColor: Colors.red.shade400,
                     ),
                   );
                 }
@@ -221,7 +221,7 @@ class _CartScreenState extends State<CartScreen> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
+              backgroundColor: Colors.red.shade400,
               foregroundColor: Colors.white,
             ),
             child: const Text('Clear'),
@@ -248,7 +248,7 @@ class _CartScreenState extends State<CartScreen> {
       arguments: {
         'amount': _cartSummary['finalTotal'],
         'cartItems': cartItems,
-        'specialRequests': _specialRequestsController.text,
+        'specialRequests': _specialRequestsController.text.trim(),
         'cartSummary': _cartSummary,
       },
     );
@@ -310,7 +310,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
             SizedBox(height: 2),
             Text(
-              "Tazaj Fruit & Vegetables",
+              "Kanwarji's",
               style: TextStyle(
                 color: Colors.grey,
                 fontSize: 12, // small grey text
@@ -325,7 +325,7 @@ class _CartScreenState extends State<CartScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(
-                    color: Colors.green.shade700,
+                    color: Colors.red.shade400,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -376,7 +376,7 @@ class _CartScreenState extends State<CartScreen> {
               icon: const Icon(Icons.search),
               label: const Text('Browse Products'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade700,
+                backgroundColor: Colors.red.shade400,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
@@ -407,13 +407,13 @@ class _CartScreenState extends State<CartScreen> {
                 onPressed: _isProcessing ? null : _clearCart,
                 icon: Icon(
                   Icons.delete_outline,
-                  color: _isProcessing ? Colors.grey : Colors.red.shade600,
+                  color: _isProcessing ? Colors.grey : Colors.red.shade400,
                   size: 18,
                 ),
                 label: Text(
                   'Clear Cart',
                   style: TextStyle(
-                    color: _isProcessing ? Colors.grey : Colors.red.shade600,
+                    color: _isProcessing ? Colors.grey : Colors.red.shade400,
                   ),
                 ),
               ),
@@ -424,7 +424,7 @@ class _CartScreenState extends State<CartScreen> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: _loadCart,
-            color: Colors.green.shade700,
+            color: Colors.red.shade400,
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -469,7 +469,7 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.green.shade700),
+                        borderSide: BorderSide(color: Colors.red.shade400),
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       filled: true,
@@ -505,7 +505,7 @@ class _CartScreenState extends State<CartScreen> {
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        color: Colors.red.shade600,
+        color: Colors.red.shade400,
         child: const Icon(
           Icons.delete,
           color: Colors.white,
@@ -579,17 +579,17 @@ class _CartScreenState extends State<CartScreen> {
                         Row(
                           children: [
                             Text(
-                              'BHD${finalPriceWithTax.toStringAsFixed(3)} / ${item['unit']?.toString() ?? 'unit'}',
+                              '₹${finalPriceWithTax.toStringAsFixed(3)} / ${item['unit']?.toString() ?? 'unit'}',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.green.shade700,
+                                color: const Color.fromARGB(255, 26, 26, 26),
                               ),
                             ),
                             if (discount > 0) ...[
                               const SizedBox(width: 8),
                               Text(
-                                'BHD${originalPrice.toStringAsFixed(3)}',
+                                '₹${originalPrice.toStringAsFixed(3)}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey.shade500,
@@ -615,7 +615,7 @@ class _CartScreenState extends State<CartScreen> {
                                   '${discount.toStringAsFixed(0)}% OFF',
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: Colors.red.shade600,
+                                    color: Colors.red.shade400,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -701,19 +701,19 @@ class _CartScreenState extends State<CartScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              'BHD${itemFinalTotal.toStringAsFixed(3)}',
+                              '₹${itemFinalTotal.toStringAsFixed(3)}',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.green.shade700,
+                                color: const Color.fromARGB(255, 6, 6, 6),
                               ),
                             ),
                             if (itemSavings > 0) ...[
                               Text(
-                                'Save BHD${itemSavings.toStringAsFixed(3)}',
+                                'Save ₹${itemSavings.toStringAsFixed(3)}',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.red.shade600,
+                                  color: Colors.red.shade400,
                                 ),
                               ),
                             ],
@@ -756,9 +756,9 @@ class _CartScreenState extends State<CartScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.green.shade50,
+                    color: Colors.red.shade50,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green.shade200),
+                    border: Border.all(color: Colors.red.shade200),
                   ),
                   child: Column(
                     children: [
@@ -773,7 +773,7 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                           ),
                           Text(
-                            'BHD${_cartSummary['subtotal']!.toStringAsFixed(3)}',
+                            '₹${_cartSummary['subtotal']!.toStringAsFixed(3)}',
                             style: TextStyle(
                               color: Colors.grey.shade800,
                               fontSize: 14,
@@ -790,14 +790,14 @@ class _CartScreenState extends State<CartScreen> {
                             Text(
                               'Total Savings:',
                               style: TextStyle(
-                                color: Colors.red.shade600,
+                                color: Colors.red.shade400,
                                 fontSize: 14,
                               ),
                             ),
                             Text(
-                              'BHD${_cartSummary['totalSavings']!.toStringAsFixed(3)}',
+                              '₹${_cartSummary['totalSavings']!.toStringAsFixed(3)}',
                               style: TextStyle(
-                                color: Colors.red.shade600,
+                                color: Colors.red.shade400,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -818,7 +818,7 @@ class _CartScreenState extends State<CartScreen> {
                               ),
                             ),
                             Text(
-                              'BHD${_cartSummary['totalTax']!.toStringAsFixed(3)}',
+                              '₹${_cartSummary['totalTax']!.toStringAsFixed(3)}',
                               style: TextStyle(
                                 color: Colors.grey.shade800,
                                 fontSize: 14,
@@ -840,15 +840,15 @@ class _CartScreenState extends State<CartScreen> {
                           Text(
                             'Total Final Price:',
                             style: TextStyle(
-                              color: Colors.green.shade800,
+                              color: const Color.fromARGB(255, 14, 14, 14),
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
-                            'BHD${_cartSummary['finalTotal']!.toStringAsFixed(3)}',
+                            '₹${_cartSummary['finalTotal']!.toStringAsFixed(3)}',
                             style: TextStyle(
-                              color: Colors.green.shade800,
+                              color: const Color.fromARGB(255, 5, 5, 5),
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
@@ -875,16 +875,16 @@ class _CartScreenState extends State<CartScreen> {
                           'You Save',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.red.shade600,
+                            color: Colors.red.shade400,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         Text(
-                          'BHD${_cartSummary['totalSavings']!.toStringAsFixed(3)}',
+                          '₹${_cartSummary['totalSavings']!.toStringAsFixed(3)}',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Colors.red.shade600,
+                            color: Colors.red.shade400,
                           ),
                         ),
                       ],
@@ -907,7 +907,7 @@ class _CartScreenState extends State<CartScreen> {
                               ),
                             ),
                             Text(
-                              'BHD${_cartSummary['finalTotal']!.toStringAsFixed(3)}',
+                              '₹${_cartSummary['finalTotal']!.toStringAsFixed(3)}',
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -921,7 +921,7 @@ class _CartScreenState extends State<CartScreen> {
                       ElevatedButton(
                         onPressed: _isProcessing || cartItems.isEmpty ? null : _checkout,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade700,
+                          backgroundColor: Colors.red.shade400,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                           disabledBackgroundColor: Colors.grey.shade400,

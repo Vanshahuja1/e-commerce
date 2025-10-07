@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CartService {
-  static const String baseUrl = 'https://backend-ecommerce-app-co1r.onrender.com/api';
+  static const String baseUrl = 'https://e-com-backend-x67v.onrender.com/api';
   
   // Get user token from shared preferences
   static Future<String?> _getUserToken() async {

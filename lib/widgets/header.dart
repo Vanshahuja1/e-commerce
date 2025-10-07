@@ -86,77 +86,43 @@ class _HeaderState extends State<Header> {
     final isDesktop = screenWidth >= 1024;
     final isMobile = screenWidth < 768;
 
-  return AppBar(
-  backgroundColor: Colors.white,
-  elevation: 2,
-  automaticallyImplyLeading: false,
-  centerTitle: true,
-  leading: _buildLeadingLogo(isDesktop, isTablet, isMobile, context),
-  title: Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      const SizedBox(height: 8), // Move title down
-      _buildTitle(isDesktop, isTablet, isMobile),
-    ],
-  ),
-  actions: _buildActions(isDesktop, isTablet, isMobile, context),
-);
-  }
-  
-  Widget _buildLeadingLogo(bool isDesktop, bool isTablet, bool isMobile, BuildContext context) {
-    double logoSize = isDesktop ? 24 : (isTablet ? 22 : 20);
-    
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: GestureDetector(
-        onTap: () {
-          Navigator.pushNamedAndRemoveUntil(
-            context, 
-            '/home',
-            (route) => false, // This removes all previous routes
-          );
-        },
-        child: Image.asset(
-          'images/logo.png',
-          width: logoSize,
-          height: logoSize,
-          fit: BoxFit.contain,
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 2,
+      centerTitle: true,
+      leading: Builder(
+        builder: (ctx) => IconButton(
+          icon: const Icon(Icons.menu, color: Colors.black87),
+          tooltip: 'Menu',
+          onPressed: () {
+            final scaffoldState = Scaffold.maybeOf(ctx);
+            if (scaffoldState?.hasDrawer ?? false) {
+              scaffoldState!.openDrawer();
+            }
+          },
         ),
       ),
-    );
-  }
-
-  Widget _buildTitle(bool isDesktop, bool isTablet, bool isMobile) {
-    // Smaller font sizes to fit everything properly
-    double fontSize = isDesktop ? 18 : (isTablet ? 16 : 14);
-
-    return Text(
-      'FRUIT & VEGETABLES',
-      style: TextStyle(
-        fontFamily: 'Poppins',
-        color: const Color.fromARGB(255, 0, 0, 0),
-        fontWeight: FontWeight.w600,
-        fontSize: fontSize,
-        
-        
+      title: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: SizedBox(
+          height: 36,
+          child: Image.asset('images/logo1.png', fit: BoxFit.contain),
+        ),
       ),
-      textAlign: TextAlign.center,
-      overflow: TextOverflow.ellipsis, // Prevent overflow
-    maxLines: 1,
+      actions: _buildActions(isDesktop, isTablet, isMobile, context),
     );
   }
 
   List<Widget> _buildActions(bool isDesktop, bool isTablet, bool isMobile, BuildContext context) {
-    List<Widget> actions = [];
-
-    actions.addAll([
+    // Categories previously accessible via three-dot menu are now in the drawer.
+    // Keep cart and profile actions as before.
+    return <Widget>[
+      const SizedBox(width: 8),
       _buildCartButton(context),
-      const SizedBox(width: 2), // Reduced space between cart and profile to keep them together
+      const SizedBox(width: 2),
       _buildProfileButton(context),
-      const SizedBox(width: 8), // More space from right edge to shift both icons left
-    ]);
-
-    return actions;
+      const SizedBox(width: 8),
+    ];
   }
 
   Widget _buildCartButton(BuildContext context) {

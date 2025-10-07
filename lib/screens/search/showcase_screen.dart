@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart'; // Add this import
+import 'package:video_player/video_player.dart';
 import '/services/cart_service.dart';
 import '/widgets/header.dart';
 import '/services/auth_service.dart';
@@ -21,6 +23,20 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
   bool _isLoading = false;
   bool _argumentsProcessed = false;
   bool _isAuthenticated = false; // Add authentication state
+  // Media carousel state
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+  VideoPlayerController? _videoController;
+  Future<void>? _initializeVideoFuture;
+  Timer? _autoPageTimer;
+  // Expansion states for accordions
+  bool _expProductDetails = false;
+  bool _expShipping = false;
+  bool _expHelp = false;
+  bool _expFaq = false;
+  // Sub-expansion states for FAQs
+  bool _faqReturn = false;
+  bool _faqMade = false;
 
   @override
   void initState() {
@@ -63,6 +79,14 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
       print('Error checking authentication: $e');
       return false;
     }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _disposeVideo();
+    _stopAutoSlide();
+    super.dispose();
   }
 
   // Check authentication and load initial data
@@ -115,10 +139,14 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
             product = productData;
             _argumentsProcessed = true;
           });
+          // Reset media to first page when product changes
+          _currentPage = 0;
+          _disposeVideo();
+          _startAutoSlide();
           
           print('ShowcaseScreen - Product set successfully');
           print('ShowcaseScreen - Product name: ${product?['name']}');
-          print('ShowcaseScreen - Product ID: ${product?['_id']}');
+       
         } catch (e) {
           print('ShowcaseScreen - Error processing arguments: $e');
         }
@@ -213,7 +241,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                 Navigator.pushReplacementNamed(context, '/login');
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade700,
+                backgroundColor: Colors.red.shade400,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Log In'),
@@ -258,7 +286,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${product!['name']} added to cart ($_quantity items)'),
-            backgroundColor: Colors.green.shade600,
+            backgroundColor: Colors.red.shade400,
             duration: const Duration(milliseconds: 1500),
           ),
         );
@@ -279,7 +307,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: Colors.red.shade400,
             duration: const Duration(milliseconds: 1500),
           ),
         );
@@ -321,45 +349,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
   Widget build(BuildContext context) {
     print('ShowcaseScreen - Build called, product: ${product != null ? "exists" : "null"}');
     print('ShowcaseScreen - Auth status: $_isAuthenticated'); // Debug log
-    
-    if (product == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Product Details'),
-          backgroundColor: Colors.green.shade700,
-          foregroundColor: Colors.white,
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.grey.shade400,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'No product data available',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade700,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Go Back'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+   
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -378,7 +368,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
               height: 300,
               width: double.infinity,
               color: Colors.white,
-              child: _buildProductImage(),
+              child: _buildMediaCarousel(),
             ),
 
             // Product Details
@@ -412,7 +402,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                         product!['category'].toString(),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.green.shade700,
+                          color: Colors.green.shade400,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -428,19 +418,16 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                   _buildAvailabilitySection(),
                   const SizedBox(height: 20),
 
-                  // Description
-                  _buildDescriptionSection(),
-                  const SizedBox(height: 20),
-
-                  // Product Details
-                  _buildProductDetailsSection(),
-                  const SizedBox(height: 20),
+                 
 
                   // Quantity Selector and Total Price (only if available)
                   if (product!['isAvailable'] == true) ...[
                     _buildQuantitySelector(),
                     const SizedBox(height: 16),
-                    _buildTotalPriceSection(),
+                    // Info Accordions (after quantity)
+                    _buildInfoAccordions(),
+                    const SizedBox(height: 16),
+                   
                   ],
                 ],
               ),
@@ -463,12 +450,12 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                     children: [
                       Icon(
                         Icons.shopping_basket,
-                        color: Colors.green.shade700,
+                        color: Colors.red.shade400,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'More Products',
+                        'Shop more for less',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -539,7 +526,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
       ),
     );
   }
-
+  
   Widget _buildPriceSection() {
     double originalPrice = double.tryParse(product!['price']?.toString() ?? '0') ?? 0;
     double discount = double.tryParse(product!['discount']?.toString() ?? '0') ?? 0;
@@ -552,7 +539,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'BHD${originalPrice.toStringAsFixed(3)}',
+                '₹${originalPrice.toStringAsFixed(3)}',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey.shade500,
@@ -562,11 +549,11 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
               Row(
                 children: [
                   Text(
-                    'BHD${_calculateDiscountedPrice(originalPrice, discount)}',
+                    '₹${_calculateDiscountedPrice(originalPrice, discount)}',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Colors.green.shade700,
+                      color: const Color.fromARGB(255, 7, 7, 7),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -581,7 +568,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Colors.red.shade700,
+                        color: Colors.red.shade400,
                       ),
                     ),
                   ),
@@ -591,11 +578,11 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
           ),
         ] else ...[
           Text(
-            'BHD${originalPrice.toStringAsFixed(3)}',
+            '₹${originalPrice.toStringAsFixed(3)}',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Colors.green.shade700,
+              color: const Color.fromARGB(255, 20, 20, 20),
             ),
           ),
         ],
@@ -607,6 +594,239 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // =====================
+  // Media Carousel (Images + Video)
+  // =====================
+  List<Map<String, String>> _getMediaItems() {
+    final List<Map<String, String>> items = [];
+    final p = product;
+    if (p == null) return items;
+
+    // Images array (new schema)
+    final imgs = p['images'];
+    if (imgs is List) {
+      for (final it in imgs) {
+        final url = it?.toString();
+        if (url != null && url.isNotEmpty) {
+          items.add({'type': 'image', 'url': url});
+        }
+      }
+    }
+
+    // Fallback/compat: imageUrls array (legacy schema used by some flows)
+    if (items.isEmpty) {
+      final imgUrls = p['imageUrls'];
+      if (imgUrls is List) {
+        for (final it in imgUrls) {
+          final url = it?.toString();
+          if (url != null && url.isNotEmpty) {
+            items.add({'type': 'image', 'url': url});
+          }
+        }
+      }
+    }
+
+    // Fallback to legacy single imageUrl if images were empty
+    if (items.isEmpty) {
+      final single = p['imageUrl']?.toString();
+      if (single != null && single.isNotEmpty) {
+        items.add({'type': 'image', 'url': single});
+      }
+    }
+
+    // Optional video
+    final video = p['videoUrl']?.toString();
+    if (video != null && video.isNotEmpty) {
+      items.add({'type': 'video', 'url': video});
+    }
+
+    // Debug: log how many media items were resolved
+    try {
+      print('Showcase media items count: ${items.length}');
+      if (items.isNotEmpty) {
+        print('First media item type: ${items.first['type']} url: ${items.first['url']}');
+      }
+    } catch (_) {}
+
+    return items;
+  }
+
+  void _disposeVideo() {
+    try {
+      _videoController?.pause();
+      _videoController?.dispose();
+    } catch (_) {}
+    _videoController = null;
+    _initializeVideoFuture = null;
+  }
+
+  void _startAutoSlide() {
+    _stopAutoSlide();
+    final media = _getMediaItems();
+    if (media.length <= 1) return; // nothing to slide
+    // If current is video, do not auto-slide
+    if (media[_currentPage]['type'] == 'video') return;
+    _autoPageTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted) return;
+      final m = _getMediaItems();
+      if (m.isEmpty) return;
+      // Skip auto-slide when on video
+      if (m[_currentPage]['type'] == 'video') return;
+      final next = (_currentPage + 1) % m.length;
+      _pageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  void _stopAutoSlide() {
+    _autoPageTimer?.cancel();
+    _autoPageTimer = null;
+  }
+
+  void _initVideo(String url) {
+    _disposeVideo();
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    _initializeVideoFuture = controller.initialize().then((_) {
+      if (mounted) setState(() {});
+    });
+    setState(() {
+      _videoController = controller;
+    });
+  }
+
+  Widget _buildMediaCarousel() {
+    final media = _getMediaItems();
+    if (media.isEmpty) return _buildPlaceholderImage();
+
+    // Prepare video if landing on a video page initially
+    if (media[_currentPage]['type'] == 'video' && _videoController == null) {
+      _initVideo(media[_currentPage]['url']!);
+    }
+
+    return Stack(
+      children: [
+        PageView.builder(
+          controller: _pageController,
+          itemCount: media.length,
+          onPageChanged: (index) {
+            setState(() {
+              _currentPage = index;
+            });
+            if (media[index]['type'] == 'video') {
+              _initVideo(media[index]['url']!);
+              _stopAutoSlide();
+            } else {
+              _disposeVideo();
+              _startAutoSlide();
+            }
+          },
+          itemBuilder: (context, index) {
+            final item = media[index];
+            if (item['type'] == 'video') {
+              return _buildVideoPlayer(item['url']!);
+            }
+            return _buildNetworkImage(item['url']!);
+          },
+        ),
+        Positioned(
+          bottom: 8,
+          left: 0,
+          right: 0,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(media.length, (i) {
+              final isActive = i == _currentPage;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: isActive ? 10 : 6,
+                height: isActive ? 10 : 6,
+                decoration: BoxDecoration(
+                  color: isActive ? Colors.red.shade400 : Colors.grey.shade300,
+                  shape: BoxShape.circle,
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNetworkImage(String url) {
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: CircularProgressIndicator(
+            value: loadingProgress.expectedTotalBytes != null
+                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                : null,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildVideoPlayer(String url) {
+    if (_videoController == null) {
+      _initVideo(url);
+    }
+    final controller = _videoController;
+    final initFuture = _initializeVideoFuture;
+    if (controller == null || initFuture == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return FutureBuilder<void>(
+      future: initFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: controller.value.size.width,
+                height: controller.value.size.height,
+                child: VideoPlayer(controller),
+              ),
+            ),
+            Positioned(
+              bottom: 12,
+              left: 12,
+              child: IconButton(
+                icon: Icon(
+                  controller.value.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
+                  size: 36,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  setState(() {
+                    if (controller.value.isPlaying) {
+                      controller.pause();
+                    } else {
+                      controller.play();
+                    }
+                  });
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -624,88 +844,222 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
           isAvailable ? 'In Stock' : 'Out of Stock',
           style: TextStyle(
             fontSize: 14,
-            color: isAvailable ? Colors.green.shade700 : Colors.red.shade600,
+            color: isAvailable ? Colors.green.shade400 : Colors.green.shade400,
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(width: 16),
         Text(
-          'Qty: ${product!['quantity']?.toString() ?? '0'} ${product!['unit']?.toString() ?? 'units'} available',
+          ' /${product!['unit']?.toString() ?? 'unit'}',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 16,
             color: Colors.grey.shade600,
           ),
         ),
       ],
     );
   }
+ 
+  // Helper divider used in accordions
+  Widget _buildThinDivider() {
+    return Container(
+      height: 1,
+      color: Colors.grey.shade300,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+    );
+  }
 
-  Widget _buildDescriptionSection() {
+  // Accordions block shown after quantity selector (with dummy text)
+  Widget _buildInfoAccordions() {
+    TextStyle headerStyle = TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+      color: Colors.grey.shade800,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Description',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey.shade800,
+        _buildThinDivider(),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 0),
+            title: Text('Product Details', style: headerStyle),
+            initiallyExpanded: _expProductDetails,
+            trailing: Icon(
+              _expProductDetails ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+              size: 18,
+            ),
+            onExpansionChanged: (v) => setState(() {
+              _expProductDetails = v;
+              if (v) {
+                _expShipping = false;
+                _expHelp = false;
+                _expFaq = false;
+              }
+            }),
+            childrenPadding: const EdgeInsets.only(left: 0, right: 0, bottom: 12),
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 5),
+                child: Text(
+                  _getProductDetailsText(),
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          product!['description']?.toString() ?? 'No description available',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade700,
-            height: 1.5,
+        _buildThinDivider(),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 0),
+            initiallyExpanded: _expShipping,
+            title: Text('Shipping & Returns', style: headerStyle),
+            trailing: Icon(
+              _expShipping ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+              size: 18,
+            ),
+            onExpansionChanged: (v) => setState(() {
+              _expShipping = v;
+              if (v) {
+                _expProductDetails = false;
+                _expHelp = false;
+                _expFaq = false;
+              }
+            }),
+            childrenPadding: const EdgeInsets.only(left: 0, right: 0, bottom: 12),
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  'Shipping It takes 2-3 days for deliveries in Bangalore, whereas it takes 6-8 days for Nation and worldwide deliveries. Returns We do not accept returns. Refunds are provided in certain cases. Please email us at info@kanwarjis.in with relevant information and images for assistance.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
+                ),
+              ),
+            ],
           ),
         ),
+        _buildThinDivider(),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 0),
+            title: Text('May We Help?', style: headerStyle),
+            trailing: Icon(
+              _expHelp ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+              size: 18,
+            ),
+            onExpansionChanged: (v) => setState(() {
+              _expHelp = v;
+              if (v) {
+                _expProductDetails = false;
+                _expShipping = false;
+                _expFaq = false;
+              }
+            }),
+            childrenPadding: const EdgeInsets.only(left: 0, right: 0, bottom: 12),
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  'You can reach out to us for product related information, bulk inquiries or special requests at info@kanwarjis.in',
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildThinDivider(),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 0),
+            title: Text('Have A Question? Read Our FAQs', style: headerStyle),
+            trailing: Icon(
+              _expFaq ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+              size: 18,
+            ),
+            onExpansionChanged: (v) => setState(() {
+              _expFaq = v;
+              if (v) {
+                _expProductDetails = false;
+                _expShipping = false;
+                _expHelp = false;
+              }
+            }),
+            childrenPadding: const EdgeInsets.only(left: 0, right: 0, bottom: 12),
+            children: [
+              // Subcategory: Return/Refund Policy
+              Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 0),
+                  title: const Text('Do you have a return or refund policy?'),
+                  trailing: Icon(
+                    _faqReturn ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                    size: 18,
+                  ),
+                  onExpansionChanged: (v) => setState(() {
+                    _faqReturn = v;
+                    if (v) {
+                      _faqMade = false;
+                    }
+                  }),
+                  childrenPadding: const EdgeInsets.only(left: 0, right: 0, bottom: 8),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Text(
+                        'We do not accept returns. Refunds are provided in certain cases. Please email us at info@kanwarjis.in with relevant information and images for assistance.',
+                        style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _buildThinDivider(),
+              // Subcategory: How are products made
+              Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 0),
+                  title: const Text('How are the products made? What you use in all your products?'),
+                  trailing: Icon(
+                    _faqMade ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                    size: 18,
+                  ),
+                  onExpansionChanged: (v) => setState(() {
+                    _faqMade = v;
+                    if (v) {
+                      _faqReturn = false;
+                    }
+                  }),
+                  childrenPadding: const EdgeInsets.only(left: 0, right: 0, bottom: 8),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Text(
+                        'All the ingredients used are single sourced origins and of premium quality.',
+                        style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildThinDivider(),
       ],
     );
   }
 
-  Widget _buildProductDetailsSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Product Details',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade800,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildDetailRow('Product ID', product!['_id']?.toString() ?? 'N/A'),
-          _buildDetailRow('Unit', product!['unit']?.toString() ?? 'N/A'),
-          _buildDetailRow('Available Quantity', '${product!['quantity']?.toString() ?? '0'} ${product!['unit']?.toString() ?? 'units'}'),
-          if (product!['discount'] != null && (double.tryParse(product!['discount'].toString()) ?? 0) > 0)
-            _buildDetailRow('Discount', '${product!['discount']}%'),
-          if (product!['tax'] != null && (double.tryParse(product!['tax'].toString()) ?? 0) > 0)
-            _buildDetailRow('Tax', '${product!['tax']}%'),
-          if (product!['hasVAT'] == true)
-            _buildDetailRow('VAT', 'Applicable'),
-          if (product!['createdAt'] != null)
-            _buildDetailRow('Listed On', _formatDate(product!['createdAt'].toString())),
-          if (product!['updatedAt'] != null)
-            _buildDetailRow('Last Updated', _formatDate(product!['updatedAt'].toString())),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildQuantitySelector() {
     int maxQuantity = int.tryParse(product!['quantity']?.toString() ?? '1') ?? 1;
-    
     return Row(
       children: [
         Text(
@@ -724,11 +1078,13 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
           child: Row(
             children: [
               IconButton(
-                onPressed: _quantity > 1 ? () {
-                  setState(() {
-                    _quantity--;
-                  });
-                } : null,
+                onPressed: _quantity > 1
+                    ? () {
+                        setState(() {
+                          _quantity--;
+                        });
+                      }
+                    : null,
                 icon: const Icon(Icons.remove),
                 iconSize: 20,
               ),
@@ -743,11 +1099,13 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                 ),
               ),
               IconButton(
-                onPressed: _quantity < maxQuantity ? () {
-                  setState(() {
-                    _quantity++;
-                  });
-                } : null,
+                onPressed: _quantity < maxQuantity
+                    ? () {
+                        setState(() {
+                          _quantity++;
+                        });
+                      }
+                    : null,
                 icon: const Icon(Icons.add),
                 iconSize: 20,
               ),
@@ -766,133 +1124,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     );
   }
 
-  Widget _buildTotalPriceSection() {
-    double discount = double.tryParse(product!['discount']?.toString() ?? '0') ?? 0;
-    double tax = double.tryParse(product!['tax']?.toString() ?? '0') ?? 0;
-    bool hasDiscount = discount > 0;
-    bool hasTax = tax > 0;
-    bool hasVAT = product!['hasVAT'] == true;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.green.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green.shade200),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Subtotal:',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-              Text(
-                'BHD${_calculateSubtotal()}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-            ],
-          ),
-          if (hasDiscount) ...[
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Discount (${discount.toInt()}%):',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.red.shade600,
-                  ),
-                ),
-                Text(
-                  '-BHD${_calculateDiscountAmount()}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.red.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (hasTax) ...[
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Tax (${tax.toInt()}%):',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                Text(
-                  'BHD${_calculateTaxAmount()}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (hasVAT) ...[
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'VAT:',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                Text(
-                  'Included',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          const Divider(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Total Price:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade800,
-                ),
-              ),
-              Text(
-                'BHD${_calculateTotalPrice()}',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green.shade700,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildBottomButton() {
     bool isAvailable = product!['isAvailable'] == true;
@@ -926,7 +1158,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade700,
+                backgroundColor: Colors.red.shade400,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -975,7 +1207,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade700,
+                  backgroundColor: Colors.red.shade400,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1084,5 +1316,42 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     // Add tax to discounted price
     double finalPrice = discountedPrice * (1 + tax / 100);
     return (finalPrice * _quantity).toStringAsFixed(3);
+  }
+
+  // Dynamic product description getter with multiple key fallbacks
+  String _getProductDetailsText() {
+    final p = product;
+    if (p == null) return 'No details available';
+
+    final candidateKeys = [
+      'productDetails',
+      'product details',
+      'description',
+      'Product Details',
+      'product_description',
+    ];
+
+    for (final key in candidateKeys) {
+      if (p.containsKey(key)) {
+        final v = p[key];
+        if (v != null) {
+          final s = v.toString().trim();
+          if (s.isNotEmpty && s.toLowerCase() != 'null') return s;
+        }
+      }
+    }
+
+    // Construct a minimal fallback using other known fields
+    final name = p['name']?.toString();
+    final cat = p['category']?.toString();
+    final unit = p['unit']?.toString();
+    final qty = p['quantity']?.toString();
+    final parts = <String>[];
+    if (name != null && name.isNotEmpty) parts.add(name);
+    if (cat != null && cat.isNotEmpty) parts.add('Category: $cat');
+    if (qty != null && unit != null && qty.isNotEmpty && unit.isNotEmpty) {
+      parts.add('Pack: $qty $unit');
+    }
+    return parts.isNotEmpty ? parts.join(' • ') : 'No details available';
   }
 }

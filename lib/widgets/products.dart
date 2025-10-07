@@ -6,11 +6,19 @@ import '../services/cart_service.dart';
 class ProductsSection extends StatefulWidget {
   final VoidCallback? refreshCartCount;
   final bool isGuestMode;
+  final bool smallAddButton; // whether to render smaller add buttons
+  final int crossAxisCount; // number of columns in grid
+  final String? filterCategory; // optional category filter
+  final String? filterQuery; // optional text query filter
 
   const ProductsSection({
     Key? key,
     this.refreshCartCount,
     this.isGuestMode = false,
+    this.smallAddButton = true,
+    this.crossAxisCount = 2,
+    this.filterCategory,
+    this.filterQuery,
   }) : super(key: key);
 
   @override
@@ -22,13 +30,49 @@ class ProductsSectionState extends State<ProductsSection> {
   bool isLoading = true;
   String? error;
   Map<String, int> cartQuantities = {};
-
+  // track current page index for product image carousels
+  final Map<String, int> _imagePageIndex = {};
+  
   @override
   void initState() {
     super.initState();
     fetchProducts();
     if (!widget.isGuestMode) {
       loadCartQuantities();
+    }
+  }
+
+  Future<void> addItemToCart(dynamic product) async {
+    if (widget.isGuestMode) {
+      Navigator.pushNamed(context, '/login');
+      return;
+    }
+    try {
+      await CartService.addToCart(Map<String, dynamic>.from(product));
+      await fetchProducts();
+      await loadCartQuantities();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product['name']} added to cart'),
+            backgroundColor: Colors.red.shade400,
+            duration: const Duration(milliseconds: 800),
+          ),
+        );
+      }
+      if (widget.refreshCartCount != null) {
+        widget.refreshCartCount!();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error adding item to cart: $e'),
+            backgroundColor: Colors.red.shade400,
+            duration: const Duration(milliseconds: 800),
+          ),
+        );
+      }
     }
   }
 
@@ -65,69 +109,78 @@ class ProductsSectionState extends State<ProductsSection> {
         isLoading = true;
         error = null;
       });
-      final response = await http.get(
-        Uri.parse('https://backend-ecommerce-app-co1r.onrender.com/api/admin-items'),
-        headers: {'Content-Type': 'application/json'},
-      );
-      if (response.statusCode == 200) {
+
+      List<dynamic> allProducts = [];
+      int page = 1;
+      int totalPages = 1;
+
+      do {
+        final uri = Uri.parse(
+            'https://e-com-backend-x67v.onrender.com/api/admin-items?page=' + page.toString());
+        final response = await http.get(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode != 200) {
+          setState(() {
+            error = 'Failed to load products: ${response.statusCode}';
+            isLoading = false;
+          });
+          return;
+        }
+
         final data = json.decode(response.body);
-        setState(() {
-          if (data is List) {
-            products = data;
-          } else if (data is Map && data.containsKey('items')) {
-            products = data['items'];
-          } else if (data is Map && data.containsKey('data')) {
-            products = data['data'];
-          } else {
-            products = [data];
-          }
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          error = 'Failed to load products: ${response.statusCode}';
-          isLoading = false;
-        });
-      }
+
+        // If backend returns a raw list (no pagination), use it directly
+        if (data is List) {
+          allProducts = data;
+          totalPages = 1;
+          break;
+        }
+
+        if (data is Map && data.containsKey('items')) {
+          final items = (data['items'] as List?) ?? [];
+          allProducts.addAll(items);
+          final tp = data['totalPages'];
+          totalPages = tp is int ? tp : int.tryParse(tp?.toString() ?? '1') ?? 1;
+        } else if (data is Map && data.containsKey('data')) {
+          allProducts = (data['data'] as List?) ?? [];
+          totalPages = 1;
+          break;
+        } else {
+          allProducts = [data];
+          totalPages = 1;
+          break;
+        }
+
+        page++;
+      } while (page <= totalPages);
+
+      setState(() {
+        // Apply optional filters from widget
+        var displayed = allProducts;
+        if (widget.filterCategory != null && widget.filterCategory!.isNotEmpty) {
+          displayed = displayed.where((p) {
+            final cat = (p['category'] ?? '').toString().toLowerCase();
+            return cat.contains(widget.filterCategory!.toLowerCase());
+          }).toList();
+        }
+        if (widget.filterQuery != null && widget.filterQuery!.isNotEmpty) {
+          final q = widget.filterQuery!.toLowerCase();
+          displayed = displayed.where((p) {
+            final name = (p['name'] ?? '').toString().toLowerCase();
+            return name.contains(q);
+          }).toList();
+        }
+        products = displayed;
+        isLoading = false;
+      });
     } catch (e) {
       setState(() {
         error = 'Network error: $e';
         isLoading = false;
       });
-    }
-  }
-
-  Future<void> addItemToCart(dynamic product) async {
-    if (widget.isGuestMode) {
-      Navigator.pushNamed(context, '/login');
-      return;
-    }
-    try {
-      await CartService.addToCart(Map<String, dynamic>.from(product));
-      await fetchProducts();
-      await loadCartQuantities();
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${product['name']} added to cart'),
-            backgroundColor: Colors.green.shade600,
-            duration: const Duration(milliseconds: 800),
-          ),
-        );
-      }
-      if (widget.refreshCartCount != null) {
-        widget.refreshCartCount!();
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error adding item to cart: $e'),
-            backgroundColor: Colors.red.shade600,
-            duration: const Duration(milliseconds: 800),
-          ),
-        );
-      }
     }
   }
 
@@ -161,7 +214,7 @@ class ProductsSectionState extends State<ProductsSection> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error updating cart: $e'),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: Colors.red.shade400,
             duration: const Duration(milliseconds: 800),
           ),
         );
@@ -187,7 +240,7 @@ class ProductsSectionState extends State<ProductsSection> {
                     child: Column(
                       children: [
                         CircularProgressIndicator(
-                          color: Colors.green.shade700,
+                          color: Colors.red.shade400,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -211,7 +264,7 @@ class ProductsSectionState extends State<ProductsSection> {
                         const SizedBox(height: 16),
                         Text(
                           error!,
-                          style: TextStyle(color: Colors.red.shade600),
+                          style: TextStyle(color: Colors.red.shade400),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
@@ -220,7 +273,7 @@ class ProductsSectionState extends State<ProductsSection> {
                           icon: const Icon(Icons.refresh),
                           label: const Text('Retry'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade700,
+                            backgroundColor: Colors.red.shade400,
                             foregroundColor: Colors.white,
                           ),
                         ),
@@ -246,7 +299,7 @@ class ProductsSectionState extends State<ProductsSection> {
                           icon: const Icon(Icons.refresh),
                           label: const Text('Refresh'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade700,
+                            backgroundColor: Colors.red.shade400,
                             foregroundColor: Colors.white,
                           ),
                         ),
@@ -261,12 +314,12 @@ class ProductsSectionState extends State<ProductsSection> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
+                        crossAxisCount: widget.crossAxisCount,
                       crossAxisSpacing: 8,
                       mainAxisSpacing: 12,
                       childAspectRatio: _getChildAspectRatio(screenWidth),
                     ),
-                    itemCount: products.length > 15 ? 15 : products.length,
+                    itemCount: products.length,
                     itemBuilder: (context, index) {
                       return _buildProductCard(products[index], screenWidth);
                     },
@@ -298,10 +351,8 @@ class ProductsSectionState extends State<ProductsSection> {
     String productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
     int quantity = cartQuantities[productId] ?? 0;
 
-    double originalPrice = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
-    double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0.0;
-    double tax = double.tryParse(product['tax']?.toString() ?? '0') ?? 0.0;
-    bool hasVAT = product['hasVAT'] == true;
+  double originalPrice = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
+  double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0.0;
     
     // Calculate discounted price (this is what should be shown on cards)
     double discountedPrice = originalPrice * (1 - discount / 100);
@@ -334,9 +385,9 @@ class ProductsSectionState extends State<ProductsSection> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Section 
+            // Image Section with Horizontal PageView for multiple images
             Expanded(
-              flex: 5, // Back to original
+              flex: 5,
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -346,77 +397,16 @@ class ProductsSectionState extends State<ProductsSection> {
                     topRight: Radius.circular(12),
                   ),
                 ),
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        topRight: Radius.circular(12),
-                      ),
-                      child: product['imageUrl'] != null &&
-                              product['imageUrl'].toString().isNotEmpty
-                          ? Image.network(
-                              product['imageUrl'].toString(),
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                              errorBuilder: (context, error, stackTrace) {
-                                return _buildPlaceholderImage();
-                              },
-                            )
-                          : _buildPlaceholderImage(),
-                    ),
-                    if (hasDiscount)
-                      Positioned(
-                        top: 4, // Reduced padding
-                        left: 4, // Reduced padding
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), // Reduced padding
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(6), // Reduced radius
-                          ),
-                          child: Text(
-                            '${discount.toInt()}% OFF',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: screenWidth > 600 ? 7 : 6, // Reduced font size
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (hasVAT)
-                      Positioned(
-                        top: 4, // Reduced padding
-                        right: 4, // Reduced padding
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1), // Reduced padding
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade600,
-                            borderRadius: BorderRadius.circular(4), // Reduced radius
-                          ),
-                          child: Text(
-                            'VAT',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: screenWidth > 600 ? 6 : 5, // Reduced font size
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                child: _buildImageCarousel(product, screenWidth),
               ),
             ),
             // Product Details Section 
             Expanded(
-              flex: 4, // Back to original
+              flex: 4,
               child: Padding(
                 padding: EdgeInsets.symmetric(
-                    horizontal: screenWidth > 600 ? 10 : 8, // Back to original
-                    vertical: screenWidth > 600 ? 8 : 6), // Back to original
+                    horizontal: screenWidth > 600 ? 10 : 8,
+                    vertical: screenWidth > 600 ? 8 : 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -428,32 +418,33 @@ class ProductsSectionState extends State<ProductsSection> {
                           child: Text(
                             product['name']?.toString() ?? 'Unknown Product',
                             style: TextStyle(
-                              fontSize: screenWidth > 600 ? 11 : 9, // Slightly reduced
+                              fontSize: screenWidth > 600 ? 11 : 9,
                               fontWeight: FontWeight.w600,
                               color: Colors.black87,
-                              height: 1.1, // Reduced line height
+                              height: 1.1,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 4), // Reduced spacing
+                        const SizedBox(width: 4),
                         _buildAddButton(product, quantity, screenWidth),
                       ],
                     ),
-                    const SizedBox(height: 1), // Reduced spacing
+                    const SizedBox(height: 1),
                     // Quantity/Weight - Made more compact
                     Text(
-                      '${product['weight'] ?? product['quantity'] ?? '500 g'} - Approx. ${product['pieces'] ?? '4-5pcs'}',
+                    '${product['quantity']} ${product['unit']}'
+,
                       style: TextStyle(
-                        fontSize: screenWidth > 600 ? 8 : 7, // Reduced font size
-                        color: Colors.grey.shade600,
+                        fontSize: screenWidth > 700 ? 9 : 8,
+                        color: Colors.grey.shade700,
                         fontWeight: FontWeight.normal,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2), // Reduced spacing
+                    const SizedBox(height: 2),
                     // Price Section - Made more compact
                     hasDiscount
                         ? Column(
@@ -461,28 +452,28 @@ class ProductsSectionState extends State<ProductsSection> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'BHD ${originalPrice.toStringAsFixed(3)}',
+                                '₹ ${originalPrice.toStringAsFixed(3)}',
                                 style: TextStyle(
-                                  fontSize: screenWidth > 600 ? 9 : 8, // Reduced font size
+                                  fontSize: screenWidth > 600 ? 9 : 8,
                                   color: Colors.grey.shade500,
                                   decoration: TextDecoration.lineThrough,
                                   decorationColor: Colors.grey.shade500,
                                 ),
                               ),
                               Text(
-                                'BHD ${discountedPrice.toStringAsFixed(3)}',
+                                '₹ ${discountedPrice.toStringAsFixed(3)}',
                                 style: TextStyle(
-                                  fontSize: screenWidth > 600 ? 12 : 10, // Reduced font size
+                                  fontSize: screenWidth > 600 ? 12 : 10,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.red,
+                                  color: const Color.fromARGB(255, 23, 23, 23),
                                 ),
                               ),
                             ],
                           )
                         : Text(
-                            'BHD ${discountedPrice.toStringAsFixed(3)}',
+                            '₹ ${discountedPrice.toStringAsFixed(3)}',
                             style: TextStyle(
-                              fontSize: screenWidth > 600 ? 12 : 10, // Reduced font size
+                              fontSize: screenWidth > 600 ? 12 : 10,
                               fontWeight: FontWeight.bold,
                               color: Colors.black,
                             ),
@@ -498,10 +489,12 @@ class ProductsSectionState extends State<ProductsSection> {
   }
 
   Widget _buildAddButton(dynamic product, int quantity, double screenWidth) {
-    double buttonSize = screenWidth > 600 ? 20 : 16; // Slightly reduced
-    double iconSize = screenWidth > 600 ? 12 : 10; // Slightly reduced
-    double fontSize = screenWidth > 600 ? 10 : 8; // Slightly reduced
-    double rowPadding = screenWidth > 600 ? 4 : 2; // Reduced padding
+    // Allow a smaller add button for compact displays across app
+    final useSmall = widget.smallAddButton;
+    double buttonSize = useSmall ? (screenWidth > 600 ? 24 : 28) : (screenWidth > 600 ? 28 : 36);
+    double iconSize = useSmall ? (screenWidth > 600 ? 12 : 14) : (screenWidth > 600 ? 14 : 18);
+    double fontSize = useSmall ? (screenWidth > 600 ? 11 : 12) : (screenWidth > 600 ? 12 : 14);
+    double rowPadding = screenWidth > 600 ? 6 : 8;
 
     if (quantity == 0) {
       return GestureDetector(
@@ -515,8 +508,8 @@ class ProductsSectionState extends State<ProductsSection> {
             boxShadow: [
               BoxShadow(
                 color: Colors.grey.shade300,
-                blurRadius: 3, // Reduced blur
-                offset: const Offset(0, 1), // Reduced offset
+                blurRadius: 3,
+                offset: const Offset(0, 1),
               ),
             ],
           ),
@@ -527,70 +520,70 @@ class ProductsSectionState extends State<ProductsSection> {
           ),
         ),
       );
-    } else {
-      return Container(
-        height: buttonSize,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10), // Reduced radius
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.shade300,
-              blurRadius: 3, // Reduced blur
-              offset: const Offset(0, 1), // Reduced offset
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GestureDetector(
-              onTap: () => removeItemFromCart(product),
-              child: Container(
-                width: buttonSize,
-                height: buttonSize,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.remove,
-                  color: Colors.white,
-                  size: iconSize,
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: rowPadding),
-              child: Text(
-                quantity.toString(),
-                style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-            GestureDetector(
-              onTap: () => addItemToCart(product),
-              child: Container(
-                width: buttonSize,
-                height: buttonSize,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.add,
-                  color: Colors.white,
-                  size: iconSize,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
     }
+
+    return Container(
+      height: buttonSize,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade300,
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: () => removeItemFromCart(product),
+            child: Container(
+              width: buttonSize,
+              height: buttonSize,
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.remove,
+                color: Colors.white,
+                size: iconSize,
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: rowPadding),
+            child: Text(
+              quantity.toString(),
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => addItemToCart(product),
+            child: Container(
+              width: buttonSize,
+              height: buttonSize,
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.add,
+                color: Colors.white,
+                size: iconSize,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildPlaceholderImage() {
@@ -603,6 +596,114 @@ class ProductsSectionState extends State<ProductsSection> {
         size: 28, // Slightly reduced
         color: Colors.grey.shade400,
       ),
+    );
+  }
+
+  Widget _buildImageCarousel(dynamic product, double screenWidth) {
+    // Determine image list: prefer 'images' array, fallback to single 'imageUrl'
+    List<String> images = [];
+    if (product['images'] is List) {
+      images = List<String>.from(product['images'].where((e) => e != null).map((e) => e.toString()));
+    }
+    if (images.isEmpty && product['imageUrl'] != null) {
+      final s = product['imageUrl'].toString();
+      // If comma-separated, split, else single
+      if (s.contains(',')) {
+        images = s.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      } else if (s.isNotEmpty) {
+        images = [s];
+      }
+    }
+
+    if (images.isEmpty) {
+      return ClipRRect(
+        borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+        child: _buildPlaceholderImage(),
+      );
+    }
+
+    String productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
+    int initialPage = _imagePageIndex[productId] ?? 0;
+
+    return Stack(
+      children: [
+        PageView.builder(
+          key: ValueKey('pv-$productId'),
+          itemCount: images.length,
+          controller: PageController(initialPage: initialPage),
+          onPageChanged: (idx) {
+            setState(() {
+              _imagePageIndex[productId] = idx;
+            });
+          },
+          itemBuilder: (context, idx) {
+            final img = images[idx];
+            return ClipRRect(
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+              child: img.isNotEmpty
+                  ? Image.network(
+                      img,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
+                    )
+                  : _buildPlaceholderImage(),
+            );
+          },
+        ),
+        // Discount and VAT badges (compute locally)
+        Builder(builder: (context) {
+          double localDiscount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0.0;
+          bool localHasDiscount = localDiscount > 0;
+          bool localHasVAT = product['hasVAT'] == true;
+          return Stack(
+            children: [
+              if (localHasDiscount)
+                Positioned(
+                  top: 6,
+                  left: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${localDiscount.toInt()}% OFF',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: screenWidth > 600 ? 10 : 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              if (localHasVAT)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade600,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'VAT',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: screenWidth > 600 ? 10 : 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }),
+        // Indicator intentionally hidden per user request
+      ],
     );
   }
 }

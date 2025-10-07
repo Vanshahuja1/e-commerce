@@ -210,7 +210,7 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> with TickerProviderStateMixin {
   // API BASE URL
   static const String _baseUrl =
-      "https://backend-ecommerce-app-co1r.onrender.com/api";
+      "https://e-com-backend-x67v.onrender.com/api";
 
   // Dashboard stats
   int _totalUsers = 0;
@@ -251,7 +251,7 @@ class _AdminDashboardState extends State<AdminDashboard> with TickerProviderStat
   final TextEditingController _productDiscountController = TextEditingController();
   final TextEditingController _productTaxController = TextEditingController();
   bool _productHasVAT = false;
-  String _selectedProductCategory = 'Fruits';
+  String _selectedProductCategory = 'Savory';
   String _selectedProductUnit = 'kg';
   String? _selectedProductImageUrl;
   String? _selectedPredefinedItem;
@@ -957,7 +957,7 @@ Future<void> _fetchStats() async {
     _productDescriptionController.clear();
     _productPriceController.clear();
     _productQuantityController.clear();
-    _selectedProductCategory = 'Fruits';
+    _selectedProductCategory = 'savory';
     _selectedProductUnit = 'kg';
     _selectedProductImageUrl = null;
     _selectedPredefinedItem = null;
@@ -1394,7 +1394,7 @@ Future<void> _fetchStats() async {
                     ),
                   ],
                 );
-              } else {
+              } else
                 return Column(
                   children: [
                     _statCard(
@@ -1415,7 +1415,7 @@ Future<void> _fetchStats() async {
                   ],
                 );
               }
-            },
+            
           ),
         ],
       ),
@@ -1609,7 +1609,7 @@ Widget _buildAddProductTab() {
                                 fillColor: const Color(0xFF151A24),
                                 hintText: '0.00',
                                 hintStyle: const TextStyle(color: Colors.grey),
-                                prefixText: '\BHD',
+                                prefixText: '\₹',
                                 prefixStyle: const TextStyle(color: Colors.grey),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
@@ -1723,11 +1723,12 @@ Widget _buildAddProductTab() {
                 ),
               ),
               items: [
-                'Fruits',
-                'Vegetables',
-                'Herbs ',
-                'Dried Fruit',
-                'Other'
+                'Savory',
+                'Namkeen',
+                'Sweets',
+                'Travel Pack Combo',
+                'Value Pack Offers',
+                'Gift Packs',
               ].map((String category) {
                 return DropdownMenuItem<String>(
                   value: category,
@@ -2028,13 +2029,15 @@ Widget _buildAddProductTab() {
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: [
-                                _categoryFilterChip('All', null),
-                                _categoryFilterChip('Fruits', 'Fruits'),
-                                _categoryFilterChip('Vegetables', 'Vegetables'),
+                                _categoryFilterChip('Savory', 'Savory'),
+                                _categoryFilterChip('Namkeen', 'Namkeen'),
+                                _categoryFilterChip('Sweets', 'Sweets'),
                                 _categoryFilterChip(
-                                    'Herbs & Lettuce', 'Herbs & Lettuce'),
+                                    'Travel Pack Combo', 'Travel Pack Combo'),
                                 _categoryFilterChip(
-                                    'Dried Fruit', 'Dried Fruit'),
+                                    'Value Pack Offers', 'Value Pack Offers'),
+                                _categoryFilterChip(
+                                    'Gift Packs', 'Gift Packs'),
                               ],
                             ),
                           ),
@@ -2211,8 +2214,8 @@ Widget _buildAddProductTab() {
         ],
       ),
     ),
-  );
-}
+    );
+  }
 
   // Keep all other UI methods the same...
  
@@ -2728,7 +2731,7 @@ Widget _productFilterDropdown() {
                         Row(
                           children: [
                             Text(
-                              '\$${product.price.toStringAsFixed(2)}',
+                              '\₹${product.price.toStringAsFixed(2)}',
                               style: TextStyle(
                                 color: product.isAvailable
                                     ? Colors.green
@@ -2936,7 +2939,7 @@ Widget _productFilterDropdown() {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '\$${product.price.toStringAsFixed(2)}',
+                              '\₹${product.price.toStringAsFixed(2)}',
                               style: TextStyle(
                                 color: product.isAvailable
                                     ? Colors.green
@@ -3140,8 +3143,8 @@ Widget _productFilterDropdown() {
         ),
       ),
     ),
-  );
-}
+    );
+  }
 
   // --- ORDERS TAB ---
   Widget _buildOrdersTab() {
@@ -3216,21 +3219,19 @@ Widget _productFilterDropdown() {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Order #${order.id.substring(0, 8)}...',
+                        'Order ID: ${order.id}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
-                        order.userName,
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 14),
+                        'Customer Name: ${order.userName}',
+                        style: const TextStyle(color: Colors.grey, fontSize: 14),
                       ),
                       Text(
-                        order.userEmail,
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 12),
+                        'Customer Email: ${order.userEmail}',
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
                       ),
                     ],
                   ),
@@ -3256,7 +3257,7 @@ Widget _productFilterDropdown() {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '\$${order.totalAmount.toStringAsFixed(2)}',
+                      '\₹${order.totalAmount.toStringAsFixed(2)}',
                       style: const TextStyle(
                         color: Colors.green,
                         fontWeight: FontWeight.bold,
@@ -3276,34 +3277,7 @@ Widget _productFilterDropdown() {
               'Date: ${_formatDate(order.createdAt)}',
               style: const TextStyle(color: Colors.grey, fontSize: 12),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.person, size: 16),
-                    label: const Text("View Customer"),
-                    onPressed: () => _viewUserDetails(order.userId),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent.withOpacity(0.2),
-                      foregroundColor: Colors.blueAccent,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.download, size: 16),
-                    label: const Text("Download Invoice"),
-                    onPressed: () => _downloadInvoice(order.id),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.withOpacity(0.2),
-                      foregroundColor: Colors.green,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            // Buttons removed as requested
           ],
         ),
       ),
@@ -3333,15 +3307,18 @@ Widget _productFilterDropdown() {
   
   // Get filtered items based on selected category
   List<String> _getFilteredItems() {
-    if (_selectedProductCategory == 'Fruits') {
-      return GroceryItems.getItemsByCategory('fruits');
-    } else if (_selectedProductCategory == 'Vegetables') {
-      return GroceryItems.getItemsByCategory('vegetables');
-    } else if (_selectedProductCategory == 'Herbs & Lettuce') {
-      return GroceryItems.getItemsByCategory('herbs & lettuce');
-    } else if (_selectedProductCategory == 'Dried Fruit') {
-      return GroceryItems.getItemsByCategory('dried fruit');
-   
+    if (_selectedProductCategory == 'Savory') {
+      return GroceryItems.getItemsByCategory('savory');
+    } else if (_selectedProductCategory == 'Namkeen') {
+      return GroceryItems.getItemsByCategory('namkeen');
+    } else if (_selectedProductCategory == 'Sweets') {
+      return GroceryItems.getItemsByCategory('sweets');
+    } else if (_selectedProductCategory == 'Travel Pack Combo') {
+      return GroceryItems.getItemsByCategory('travel pack combo');
+    } else if (_selectedProductCategory == 'Value Pack Offers') {
+      return GroceryItems.getItemsByCategory('value pack offers');
+    } else if (_selectedProductCategory == 'Gift Packs') {
+      return GroceryItems.getItemsByCategory('gift packs');
     } else {
       return GroceryItems.getAllItems();
     }
@@ -3458,7 +3435,7 @@ class _UserDetailsDialog extends StatelessWidget {
                 Expanded(
                   child: _statCard(
                     'Total Spent',
-                    '\$${userDetails.totalSpent.toStringAsFixed(2)}',
+                    '\₹${userDetails.totalSpent.toStringAsFixed(2)}',
                     Icons.attach_money,
                     Colors.green,
                   ),
@@ -3521,7 +3498,7 @@ class _UserDetailsDialog extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      '\$${order.totalAmount.toStringAsFixed(2)}',
+                                      '\₹${order.totalAmount.toStringAsFixed(2)}',
                                       style: const TextStyle(
                                         color: Colors.green,
                                         fontWeight: FontWeight.bold,

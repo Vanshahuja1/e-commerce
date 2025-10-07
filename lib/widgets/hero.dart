@@ -12,13 +12,15 @@ class _HeroSectionState extends State<HeroSection> {
   late PageController _pageController;
   late Timer _timer;
   int _currentPage = 0;
-  final int _totalPages = 3; // Changed to 3 for the 3 images
+  final int _totalPages = 5; // Changed to 5 for the 5 images
 
   // List of your asset images
   final List<String> _images = [
-    'assets/images/slider.png', // Replace with your actual image names
-    'assets/images/slider.png',
-    'assets/images/slider.png',
+    'assets/images/slder1.jpg', // Replace with your actual image names
+    'assets/images/slider2.jpg',
+    'assets/images/slider3.jpg',
+    'assets/images/slidedr4.jpg',
+    'assets/images/slider5.jpg',
   ];
 
   @override
@@ -54,7 +56,7 @@ class _HeroSectionState extends State<HeroSection> {
     return Container(
       margin: const EdgeInsets.only(top: 0, bottom: 4, left: 8, right: 8), // Removed top margin
       child: Container(
-        height: 160, // Reduced height
+        height: 325, // Reduced height
         child: PageView.builder(
           controller: _pageController,
           itemCount: null, // Infinite scroll

@@ -8,7 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '/models/user_model.dart';
 
 class AuthService {
-  static const String _baseUrl = 'https://backend-ecommerce-app-co1r.onrender.com/api';
+  static const String _baseUrl = 'https://e-com-backend-x67v.onrender.com/api';
   static const String _tokenKey = 'auth_token';
   static const String _userKey = 'user_data';
   static const String _userIdKey = 'user_id';

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Primary Colors
-  static const Color primary = Color(0xFF2E7D32);
-  static const Color primaryLight = Color(0xFF66BB6A);
-  static const Color primaryDark = Color(0xFF1B5E20);
+  static const Color primary = Colors.redAccent;        // unified lighter red
+  static const Color primaryLight = Colors.redAccent;   // keep light as redAccent
+  static const Color primaryDark = Colors.redAccent;     // unified lighter red
 
   // Secondary Colors
   static const Color secondary = Color(0xFFFF9800);
@@ -23,16 +23,16 @@ class AppColors {
 
   // Border Colors
   static const Color border = Color(0xFFE0E0E0);
-  static const Color borderFocus = Color(0xFF2E7D32);
+  static const Color borderFocus = Colors.redAccent; // match lighter red
 
   // Status Colors
-  static const Color success = Color(0xFF4CAF50);
+  static const Color success = Colors.redAccent; // show success in lighter red
   static const Color warning = Color(0xFFFF9800);
-  static const Color error = Color(0xFFE53935);
+  static const Color error = Colors.redAccent;   // lighter red for errors
   static const Color info = Color(0xFF2196F3);
 
   // Special Colors
-  static const Color discount = Color(0xFFE53935);
+  static const Color discount = Colors.redAccent; // align discounts with lighter red
   static const Color rating = Color(0xFFFFC107);
   static const Color organic = Color(0xFF8BC34A);
 

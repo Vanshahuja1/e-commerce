@@ -16,10 +16,10 @@ class OrderSuccessScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.green[600],
+       
         title: const Text(
           'Order Confirmed!',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         automaticallyImplyLeading: false, // Hide back button
         elevation: 0,
@@ -34,7 +34,7 @@ class OrderSuccessScreen extends StatelessWidget {
             children: [
               Icon(
                 Icons.check_circle_outline,
-                color: Colors.green[600],
+                color: Colors.red[400],
                 size: 120,
               ),
               const SizedBox(height: 32),
@@ -44,7 +44,7 @@ class OrderSuccessScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green[800],
+                  color: Colors.black,
                 ),
               ),
               const SizedBox(height: 16),
@@ -82,7 +82,7 @@ class OrderSuccessScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Colors.green[700],
+                              color: Colors.red[400],
                             ),
                           ),
                         ],
@@ -100,11 +100,11 @@ class OrderSuccessScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'BHD${amount.toStringAsFixed(2)}',
+                            '₹${amount.toStringAsFixed(2)}',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Colors.green[700],
+                              color: Colors.red[400],
                             ),
                           ),
                         ],
@@ -122,7 +122,7 @@ class OrderSuccessScreen extends StatelessWidget {
                     Navigator.of(context).popUntil((route) => route.isFirst); // Go back to the first route (usually home)
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[600],
+                    backgroundColor: Colors.red[400],
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),

@@ -53,7 +53,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
       }
 
       final response = await http.get(
-        Uri.parse('https://backend-ecommerce-app-co1r.onrender.com/api/auth/me'),
+        Uri.parse('https://e-com-backend-x67v.onrender.com/api/auth/me'),
         headers: {
           'Authorization': 'Bearer $_token',
           'Content-Type': 'application/json',
@@ -92,7 +92,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
   Future<void> _loadAdminStats() async {
     try {
       final response = await http.get(
-        Uri.parse('https://backend-ecommerce-app-co1r.onrender.com/api/admin/stats'),
+        Uri.parse('https://e-com-backend-x67v.onrender.com/api/admin/stats'),
         headers: {
           'Authorization': 'Bearer $_token',
           'Content-Type': 'application/json',
@@ -120,7 +120,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.red[400],
       ),
     );
     setState(() {
@@ -179,7 +179,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
       }
 
       final response = await http.put(
-        Uri.parse('https://backend-ecommerce-app-co1r.onrender.com/api/user/update-info'),
+        Uri.parse('https://e-com-backend-x67v.onrender.com/api/user/update-info'),
         headers: {
           'Authorization': 'Bearer $_token',
           'Content-Type': 'application/json',
@@ -207,7 +207,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(data['message'] ?? 'Profile updated successfully!'),
-              backgroundColor: Colors.green,
+              backgroundColor: Colors.red[200],
             ),
           );
         } else {
@@ -266,7 +266,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
       expandedHeight: 200,
       floating: false,
       pinned: true,
-      backgroundColor: Colors.green[600],
+      backgroundColor: Colors.red[300],
       flexibleSpace: FlexibleSpaceBar(
         title: Text(
           _user?['name'] ?? 'Profile',
@@ -282,8 +282,8 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.green[700]!,
-                Colors.green[500]!,
+                Colors.red[400]!,
+                Colors.red[300]!,
               ],
             ),
           ),
@@ -322,7 +322,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
               children: [
                 CircleAvatar(
                   radius: 50,
-                  backgroundColor: Colors.green[100],
+                  backgroundColor: Colors.red[50],
                   backgroundImage: _user?['profileImage'] != null
                       ? NetworkImage(_user!['profileImage'])
                       : null,
@@ -330,11 +330,11 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
                       ? Icon(
                           Icons.person,
                           size: 50,
-                          color: Colors.green[600],
+                          color: Colors.red[300],
                         )
                       : null,
                 ),
-                // REMOVED: green dot Positioned widget
+                // REMOVED: red dot Positioned widget
               ],
             ),
           ),
@@ -362,11 +362,11 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
 
     // Only allow 'admin' or 'buyer'
     if (userType == 'admin') {
-      chipColor = Colors.red;
+      chipColor = Colors.red[400]!;
       chipIcon = Icons.admin_panel_settings;
       userType = 'ADMIN';
     } else {
-      chipColor = Colors.green;
+      chipColor = Colors.red[400]!;
       chipIcon = Icons.shopping_cart;
       userType = 'BUYER';
     }
@@ -449,9 +449,9 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
         children: [
           TabBar(
             controller: _tabController,
-            labelColor: Colors.green[600],
+            labelColor: Colors.red[300],
             unselectedLabelColor: Colors.grey,
-            indicatorColor: Colors.green[600],
+            indicatorColor: Colors.red[300],
             tabs: tabs,
           ),
           Expanded(
@@ -487,7 +487,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
 
   Widget _buildStatusCard() {
     String status = 'Active';
-    Color statusColor = Colors.green;
+    Color statusColor = Colors.red[400]!;
     IconData statusIcon = Icons.check_circle;
 
     return Container(
@@ -568,7 +568,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
             icon: const Icon(Icons.dashboard),
             label: const Text('Go to Admin Dashboard'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green[600],
+              backgroundColor: Colors.red[300],
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               minimumSize: const Size(double.infinity, 50),
@@ -597,7 +597,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
           'Total Products',
           _adminStats!['totalProducts']?.toString() ?? '0',
           Icons.inventory,
-          Colors.green,
+          Colors.red[400]!,
         ),
         _buildStatCard(
           'Active Products',
@@ -656,7 +656,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
     VoidCallback onTap,
   ) {
     return ListTile(
-      leading: Icon(icon, color: Colors.green[600]),
+      leading: Icon(icon, color: Colors.red[400]),
       title: Text(title),
       subtitle: Text(subtitle),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -707,7 +707,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
           ElevatedButton(
             onPressed: () => _updateProfile(),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green[600],
+              backgroundColor: Colors.red[400],
               foregroundColor: Colors.white,
             ),
             child: const Text('Save'),

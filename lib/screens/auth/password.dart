@@ -36,7 +36,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   String _resetToken = '';
 
   // Base URL - Change this to your backend URL
-  static const String baseUrl = 'https://backend-ecommerce-app-co1r.onrender.com/api';
+  static const String baseUrl = 'https://e-com-backend-x67v.onrender.com/api';
 
   @override
   void dispose() {

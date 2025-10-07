@@ -32,7 +32,7 @@ class Footer extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.green.shade100.withOpacity(0.5),
+            color: Colors.red.shade50.withOpacity(0.5),
             blurRadius: 12,
             spreadRadius: 1,
             offset: const Offset(0, -4),
@@ -42,7 +42,7 @@ class Footer extends StatelessWidget {
       child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final iconSize = constraints.maxWidth > 600 ? 30.0 : 24.0;
+            final iconSize = constraints.maxWidth > 550 ? 25.0 : 19.0;
             return Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: constraints.maxWidth > 600 ? 40 : 16,
@@ -113,7 +113,7 @@ class Footer extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
         decoration: BoxDecoration(
           color: isActive || highlight
-              ? Colors.green.withOpacity(0.1)
+              ? Colors.red.withOpacity(0.1)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
         ),
@@ -128,7 +128,7 @@ class Footer extends StatelessWidget {
                   width: iconSize,
                   height: iconSize,
                   color: isActive || highlight 
-                      ? Colors.green.shade700 
+                      ? Colors.red.shade500 
                       : (requiresLogin)
                           ? Colors.grey.shade400
                           : Colors.grey.shade600,
@@ -155,7 +155,7 @@ class Footer extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 color: isActive || highlight
-                    ? Colors.green.shade700
+                    ? Colors.red.shade500
                     : (requiresLogin)
                         ? Colors.grey.shade400
                         : Colors.grey.shade600,

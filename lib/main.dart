@@ -49,7 +49,7 @@ class GroceryApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Tazaj - Grocery Delivery',
+      title: 'Kanwarji\'s',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
       initialRoute: AppRoutes.splash,
@@ -177,7 +177,7 @@ class GroceryApp extends StatelessWidget {
         return _createRoute(const LoginScreen());
 
       case AppRoutes.signup:
-        return _createRoute(const SignupScreen());
+        return _createRoute(const SignupScreen());  
 
       case AppRoutes.home:
         return _createRoute(const HomeScreen());
@@ -198,7 +198,7 @@ class GroceryApp extends StatelessWidget {
       case AppRoutes.search:
         return _createRoute(const SearchScreen(), settings: settings);
 
-      case AppRoutes.profile:
+   case AppRoutes.profile:
         return _createRoute(const ProfilePage());
 
       case AppRoutes.resetPassword:

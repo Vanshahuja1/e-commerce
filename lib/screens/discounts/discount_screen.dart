@@ -115,7 +115,7 @@ class DiscountScreenState extends State<DiscountScreen> {
         error = null;
       });
       final response = await http.get(
-        Uri.parse('https://backend-ecommerce-app-co1r.onrender.com/api/admin-products/with-discount'),
+        Uri.parse('https://e-com-backend-x67v.onrender.com/api/admin-products/with-discount'),
         headers: {'Content-Type': 'application/json'},
       );
       if (response.statusCode == 200) {
@@ -167,7 +167,7 @@ class DiscountScreenState extends State<DiscountScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${product['name']} added to cart'),
-            backgroundColor: Colors.green.shade600,
+            backgroundColor: Colors.red.shade400,
             duration: const Duration(milliseconds: 800),
           ),
         );
@@ -180,7 +180,7 @@ class DiscountScreenState extends State<DiscountScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error adding item to cart: $e'),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: Colors.red.shade400,
             duration: const Duration(milliseconds: 800),
           ),
         );
@@ -226,7 +226,7 @@ class DiscountScreenState extends State<DiscountScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error updating cart: $e'),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: Colors.red.shade400,
             duration: const Duration(milliseconds: 800),
           ),
         );
@@ -300,7 +300,7 @@ class DiscountScreenState extends State<DiscountScreen> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: refreshProducts,
-              color: Colors.green.shade700,
+              color: Colors.red.shade400,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: _buildDiscountContent(),
@@ -336,7 +336,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                 style: TextStyle(
                   fontSize: screenWidth > 600 ? 28 : 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green.shade700,
+                  color: Colors.red.shade400,
                   letterSpacing: 1.2,
                 ),
               ),
@@ -348,7 +348,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                     child: Column(
                       children: [
                         CircularProgressIndicator(
-                          color: Colors.green.shade700,
+                          color: Colors.red.shade400,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -372,7 +372,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                         const SizedBox(height: 16),
                         Text(
                           error!,
-                          style: TextStyle(color: Colors.red.shade600),
+                          style: TextStyle(color: Colors.red.shade400),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
@@ -381,7 +381,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                           icon: const Icon(Icons.refresh),
                           label: const Text('Retry'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade700,
+                            backgroundColor: Colors.red.shade400,
                             foregroundColor: Colors.white,
                           ),
                         ),
@@ -407,7 +407,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                           icon: const Icon(Icons.refresh),
                           label: const Text('Refresh'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade700,
+                            backgroundColor: Colors.red.shade400,
                             foregroundColor: Colors.white,
                           ),
                         ),
@@ -592,7 +592,8 @@ class DiscountScreenState extends State<DiscountScreen> {
                     const SizedBox(height: 1), // Reduced spacing
                     // Quantity/Weight - Made more compact
                     Text(
-                      '${product['weight'] ?? product['quantity'] ?? '500 g'} - Approx. ${product['pieces'] ?? '4-5pcs'}',
+                    '${product['quantity']} ${product['unit']}'
+,
                       style: TextStyle(
                         fontSize: screenWidth > 600 ? 8 : 7, // Reduced font size
                         color: Colors.grey.shade600,
@@ -609,7 +610,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'BHD ${originalPrice.toStringAsFixed(3)}',
+                                '₹ ${originalPrice.toStringAsFixed(3)}',
                                 style: TextStyle(
                                   fontSize: screenWidth > 600 ? 9 : 8, // Reduced font size
                                   color: Colors.grey.shade500,
@@ -618,17 +619,17 @@ class DiscountScreenState extends State<DiscountScreen> {
                                 ),
                               ),
                               Text(
-                                'BHD ${discountedPrice.toStringAsFixed(3)}',
+                                '₹ ${discountedPrice.toStringAsFixed(3)}',
                                 style: TextStyle(
                                   fontSize: screenWidth > 600 ? 12 : 10, // Reduced font size
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.red,
+                                  color: const Color.fromARGB(255, 0, 0, 0),
                                 ),
                               ),
                             ],
                           )
                         : Text(
-                            'BHD ${discountedPrice.toStringAsFixed(3)}',
+                            '₹ ${discountedPrice.toStringAsFixed(3)}',
                             style: TextStyle(
                               fontSize: screenWidth > 600 ? 12 : 10, // Reduced font size
                               fontWeight: FontWeight.bold,

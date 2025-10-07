@@ -187,33 +187,11 @@ class _LoginScreenState extends State<LoginScreen> {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       // App Logo
-      Container(
+      Image.asset(
+        'images/logo1.png', // replace with your GIF path, e.g., 'images/logo.gif'
         width: 80,
         height: 80,
-        decoration: BoxDecoration(
-          gradient: AppColors.primaryGradient,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Image.asset(
-              'images/logo.png',
-              width: 56,
-              height: 56,
-              fit: BoxFit.contain,
-            ),
-          ),
-        ),
-        // Removed the duplicate child: Icon - Container can only have one child
+        fit: BoxFit.contain,
       ),
 
       const SizedBox(height: 24),

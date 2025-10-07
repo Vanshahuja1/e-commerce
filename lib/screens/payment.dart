@@ -15,7 +15,7 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> {
   // Backend API configuration
-  static const String baseUrl = 'https://backend-ecommerce-app-co1r.onrender.com';
+  static const String baseUrl = 'https://e-com-backend-x67v.onrender.com';
   static const String addressEndpoint = '/api/addresses';
   static const String orderEndpoint = '/api/orders';
   
@@ -33,6 +33,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool isProcessingPayment = false;
   String? _token;
   String? editingAddressId;
+  String? specialRequests;
   
   // Cart data from arguments
   double totalAmount = 0.0;
@@ -69,8 +70,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _getCartArguments() {
+
     final arguments = ModalRoute.of(context)?.settings.arguments;
     
+
+if (arguments != null && arguments is Map<String, dynamic>) {
+  specialRequests = arguments['specialRequests'] as String?;
+
+}
     if (arguments != null && arguments is Map<String, dynamic>) {
       final amountValue = arguments['amount'];
       
@@ -310,7 +317,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(responseData['message'] ?? 'Address saved successfully'),
-              backgroundColor: Colors.green,
+              backgroundColor: Colors.red,
             ),
           );
 
@@ -483,6 +490,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         'deliveryFee': deliveryFee,
         'taxAmount': taxAmount,
         'totalAmount': finalTotal,
+        'specialRequests': specialRequests,
       };
 
       final response = await http.post(
@@ -539,7 +547,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.green,
+        backgroundColor: Colors.red,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -553,10 +561,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: Colors.green[600],
+        
         title: const Text(
           'Payment & Delivery',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -568,7 +576,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       body: isLoading
           ? const Center(
               child: CircularProgressIndicator(
-                color: Colors.green,
+                color: Colors.red,
               ),
             )
           : Column(
@@ -602,7 +610,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green[100]!),
+        border: Border.all(color: Colors.red[100]!),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -618,14 +626,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.shopping_cart, color: Colors.green[600], size: 24),
+              Icon(Icons.shopping_cart, color: Colors.red[400], size: 24),
               const SizedBox(width: 8),
               Text(
                 'Cart Items (${cartItems.length})',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green[700],
+                  color: Colors.red[400],
                 ),
               ),
             ],
@@ -652,10 +660,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: Colors.green[50],
+                            color: Colors.red[50],
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(Icons.fastfood, color: Colors.green[600], size: 20),
+                          child: Icon(Icons.fastfood, color: Colors.red[400], size: 20),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -704,7 +712,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green[100]!),
+        border: Border.all(color: Colors.red[100]!),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -720,14 +728,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.location_on, color: Colors.green[600], size: 24),
+              Icon(Icons.location_on, color: Colors.red[400], size: 24),
               const SizedBox(width: 8),
               Text(
                 'Delivery Address',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green[700],
+                  color: Colors.red[400],
                 ),
               ),
             ],
@@ -760,8 +768,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green[600]!, width: 2),
-        color: Colors.green[50],
+        border: Border.all(color: Colors.red[100]!, width: 2),
+        
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -773,7 +781,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.green[600],
+                    color: Colors.red[400],
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -786,54 +794,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   ),
                 ),
                 const Spacer(),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      setState(() {
-                        isEditingAddress = true;
-                        editingAddressId = address.id;
-                      });
-                      _populateAddressForm(address);
-                    } else if (value == 'delete') {
-                      _showDeleteConfirmation(address.id, selectedAddressIndex);
-                    } else if (value == 'change') {
-                      _showAddressSelectionDialog();
+                IconButton(
+                  icon: Icon(Icons.menu, color: Colors.grey[600]),
+                  tooltip: 'Address actions',
+                  onPressed: () {
+                    // Open drawer where address management and edit/delete actions are available
+                    final scaffoldState = Scaffold.maybeOf(context);
+                    if (scaffoldState?.hasDrawer ?? false) {
+                      scaffoldState!.openDrawer();
+                    } else {
+                      // Fallback: navigate to addresses screen
+                      Navigator.pushNamed(context, '/addresses');
                     }
                   },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit, color: Colors.blue, size: 18),
-                          SizedBox(width: 8),
-                          Text('Edit'),
-                        ],
-                      ),
-                    ),
-                    if (savedAddresses.length > 1)
-                      const PopupMenuItem(
-                        value: 'change',
-                        child: Row(
-                          children: [
-                            Icon(Icons.swap_horiz, color: Colors.orange, size: 18),
-                            SizedBox(width: 8),
-                            Text('Change Address'),
-                          ],
-                        ),
-                      ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete, color: Colors.red, size: 18),
-                          SizedBox(width: 8),
-                          Text('Delete'),
-                        ],
-                      ),
-                    ),
-                  ],
-                  child: Icon(Icons.more_vert, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -887,13 +860,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
             Icon(
               Icons.add_location_alt_outlined,
               size: 32,
-              color: Colors.green[600],
+              color: Colors.red[400],
             ),
             const SizedBox(height: 8),
             Text(
               'Add Delivery Address',
               style: TextStyle(
-                color: Colors.green[600],
+                color: Colors.red[400],
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
@@ -918,7 +891,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.green[300]!),
+          border: Border.all(color: Colors.red[300]!),
           borderRadius: BorderRadius.circular(8),
           color: Colors.white,
         ),
@@ -932,7 +905,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.green[700],
+                    color: Colors.red[400],
                   ),
                 ),
                 const Spacer(),
@@ -1076,12 +1049,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       _clearAddressForm();
                     },
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: Colors.green[600]!),
+                      side: BorderSide(color: Colors.red[400]!),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     child: Text(
                       'Cancel',
-                      style: TextStyle(color: Colors.green[600]),
+                      style: TextStyle(color: Colors.red[400]),
                     ),
                   ),
                 ),
@@ -1090,7 +1063,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   child: ElevatedButton(
                     onPressed: isSavingAddress ? null : _saveAddress,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[600],
+                      backgroundColor: Colors.red[400],
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     child: isSavingAddress
@@ -1134,7 +1107,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: Colors.green[600]),
+        prefixIcon: Icon(icon, color: Colors.red[400]),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: Colors.grey[300]!),
@@ -1145,11 +1118,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.green[600]!),
+          borderSide: BorderSide(color: Colors.red[400]!),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.red[600]!),
+          borderSide: BorderSide(color: Colors.red[400]!),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       ),
@@ -1301,7 +1274,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   secondary: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isSelected ? Colors.green[600] : Colors.grey[400],
+                      color: isSelected ? Colors.red[400] : Colors.grey[400],
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -1313,7 +1286,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       ),
                     ),
                   ),
-                  activeColor: Colors.green[600],
+                  activeColor: Colors.red[400],
                   isThreeLine: true,
                 );
               },
@@ -1327,7 +1300,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   isAddingNewAddress = true;
                 });
               },
-              child: Text('Add New', style: TextStyle(color: Colors.green[600])),
+              child: Text('Add New', style: TextStyle(color: Colors.red[400])),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1344,7 +1317,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green[100]!),
+        border: Border.all(color: Colors.red[50]!),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -1360,14 +1333,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.payment, color: Colors.green[600], size: 24),
+              Icon(Icons.payment, color: Colors.red[400], size: 24),
               const SizedBox(width: 8),
               Text(
                 'Payment Method',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green[700],
+                  color: Colors.red[400],
                 ),
               ),
             ],
@@ -1406,10 +1379,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? Colors.green[600]! : Colors.grey[300]!,
+            color: isSelected ? Colors.red[400]! : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
-          color: isSelected ? Colors.green[50] : Colors.white,
+          color: isSelected ? Colors.red[10] : Colors.white,
         ),
         child: Row(
           children: [
@@ -1421,9 +1394,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   selectedPaymentMethod = val!;
                 });
               },
-              activeColor: Colors.green[600],
+              activeColor: Colors.red[400],
             ),
-            Icon(icon, color: Colors.green[600], size: 24),
+            Icon(icon, color: Colors.red[400], size: 24),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1470,7 +1443,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green[100]!),
+        border: Border.all(color: Colors.red[100]!),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -1486,14 +1459,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.receipt_long, color: Colors.green[600], size: 24),
+              Icon(Icons.receipt_long, color: Colors.red[400], size: 24),
               const SizedBox(width: 8),
               Text(
                 'Order Summary',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green[700],
+                  color: Colors.red[400],
                 ),
               ),
             ],
@@ -1509,11 +1482,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.warning, color: Colors.red[600], size: 20),
+                  Icon(Icons.warning, color: Colors.black.withOpacity(0.6), size: 20),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
-                      'Cart amount is BHD 0.00. Please check your cart.',
+                      'Cart amount is ₹ 0.00. Please check your cart.',
                       style: TextStyle(fontSize: 14),
                     ),
                   ),
@@ -1521,10 +1494,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
             )
           else ...[
-            _buildSummaryRow('Subtotal', 'BHD${subtotal.toStringAsFixed(2)}'),
-            _buildSummaryRow('Delivery Fee', 'BHD${deliveryFee.toStringAsFixed(2)}'),
+            _buildSummaryRow('Subtotal', '₹${subtotal.toStringAsFixed(2)}'),
+            _buildSummaryRow('Delivery Fee', '₹${deliveryFee.toStringAsFixed(2)}'),
             const Divider(thickness: 1),
-            _buildSummaryRow('Total Amount', 'BHD${finalTotal.toStringAsFixed(2)}', isTotal: true),
+            _buildSummaryRow('Total Amount', '₹${finalTotal.toStringAsFixed(2)}', isTotal: true),
           ],
         ],
       ),
@@ -1542,7 +1515,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             style: TextStyle(
               fontSize: isTotal ? 16 : 14,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: isTotal ? Colors.green[700] : Colors.grey[700],
+              color: isTotal ? Colors.red[400] : Colors.grey[700],
             ),
           ),
           Text(
@@ -1550,7 +1523,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             style: TextStyle(
               fontSize: isTotal ? 16 : 14,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: isTotal ? Colors.green[700] : Colors.grey[700],
+              color: isTotal ? Colors.red[400] : Colors.grey[700],
             ),
           ),
         ],
@@ -1615,11 +1588,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         ),
                       ),
                       Text(
-                        'BHD${finalTotal.toStringAsFixed(2)}',
+                        '₹${finalTotal.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.green[700],
+                          color: Colors.black.withOpacity(0.7),
                         ),
                       ),
                     ],
@@ -1630,7 +1603,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   child: ElevatedButton(
                     onPressed: (canProceed && !isProcessingPayment && totalAmount > 0) ? _proceedToPayment : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: (canProceed && !isProcessingPayment && totalAmount > 0) ? Colors.green[600] : Colors.grey[400],
+                      backgroundColor: (canProceed && !isProcessingPayment && totalAmount > 0) ? Colors.red[400] : Colors.grey[400],
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -1710,6 +1683,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         'deliveryFee': deliveryFee,
         'taxAmount': taxAmount,
         'totalAmount': finalTotal,
+        'specialRequests': specialRequests, 
       };
 
       final response = await http.post(

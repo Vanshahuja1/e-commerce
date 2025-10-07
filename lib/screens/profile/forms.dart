@@ -520,7 +520,7 @@ class _ItemFormState extends State<ItemForm> {
                       Expanded(
                         child: _buildTextField(
                           controller: widget.priceController,
-                          label: 'Price (BHD)',
+                          label: 'Price (₹)',
                           hint: '0.00',
                           icon: Icons.currency_rupee_rounded,
                           keyboardType: TextInputType.number,
@@ -560,7 +560,7 @@ class _ItemFormState extends State<ItemForm> {
                     children: [
                       _buildTextField(
                         controller: widget.priceController,
-                        label: 'Price (BHD)',
+                        label: 'Price (₹)',
                         hint: '0.00',
                         icon: Icons.currency_rupee_rounded,
                         keyboardType: TextInputType.number,

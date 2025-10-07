@@ -17,10 +17,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<OnboardingSlide> _slides = [
     OnboardingSlide(
       color: Color(0xFFFAE54A),
-      title: 'Welcome to\ntazaj',
-      description: 'Buy Fresh. Eat Well',
-      subtitle: 'Fruits & Vegetables',
-      lottiePath: 'assets/animations/pineapple.json',
+      title: 'Welcome to\nkanwarji\'s',
+      description: 'Buy Sweet and Savory Snacks & Namkeen Online',
+      subtitle: 'Fresh, delicious, and delivered to your doorstep.',
+      imagePath: 'assets/images/slider5.jpg',
       buttonText: 'Direction Location',
       buttonColor: Color(0xFF27C96C),
       locationText: 'Start needs your location?',
@@ -30,7 +30,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'LOGIN',
       description: 'Enter your phone number to proceed',
       subtitle: '',
-      lottiePath: 'assets/animations/apple.json',
+      imagePath: 'assets/images/slder1.jpg',
       buttonText: 'Enter phone number',
       buttonColor: Color(0xFFF30201),
       locationText: '',
@@ -40,7 +40,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'delivery to\nYour Doorstep',
       description: 'Fresh, quality products delivered fast. Easy, reliable, and right to your doorstep.',
       subtitle: '',
-      lottiePath: 'assets/animations/delivery.json',
+      imagePath: 'assets/images/slider3.jpg',
       buttonText: 'Get Started',
       buttonColor: Color(0xFFF15230),
       locationText: '',
@@ -117,186 +117,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             itemCount: _slides.length,
             itemBuilder: (context, index) {
               final slide = _slides[index];
-              if (index == 0) {
-                // First slide with LEFT-ALIGNED animation layout
-                return Container(
-                  color: _slides[index].color,
-                  child: SafeArea(
-                    child: Column(
-                      children: [
-                        // Title Section
-                        Expanded(
-                          flex: 2,
-                          child: Container(
-                            padding: EdgeInsets.only(top: 60, bottom: 0, left: 20, right: 20),
-                            child: Text(
-                              _slides[index].title,
-                              style: GoogleFonts.poppins(
-                                fontSize: 42,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                                height: 1.1,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                        // Animation Section - LEFT-ALIGNED with left shift
-                        Expanded(
-                          flex: 3,
-                          child: Container(
-                            width: double.infinity,
-                            clipBehavior: Clip.none, // Don't clip the overflowing content
-                            child: Stack(
-                              clipBehavior: Clip.none, // Don't clip in Stack either
-                              children: [
-                                Positioned(
-                                  left: -40, // Position 40 pixels to the left of center
-                                  top: 0,
-                                  bottom: 0,
-                                  child: SizedBox(
-                                    width: MediaQuery.of(context).size.width * 0.9, // Even more width
-                                    child: Center(
-                                      child: Lottie.asset(
-                                        slide.lottiePath,
-                                        fit: BoxFit.contain,
-                                        alignment: Alignment.center,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        // Description Section
-                        Expanded(
-                          flex: 2,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 30),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                SizedBox(height: 40),
-                                Text(
-                                  _slides[index].description,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
-                                    height: 1.3,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  _slides[index].subtitle,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 20,
-                                    color: Colors.grey[700],
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+              // Show the slide image full-screen without cropping
+              return Container(
+                color: slide.color,
+                width: double.infinity,
+                height: double.infinity,
+                child: Center(
+                  child: Image.asset(
+                    slide.imagePath,
+                    fit: BoxFit.contain, // ensures the whole image is visible
+                    width: double.infinity,
+                    height: double.infinity,
+                    alignment: Alignment.center,
                   ),
-                );
-              } else if (index == 1) {
-                // Second slide with login layout
-                return Container(
-                  color: _slides[index].color,
-                  child: SafeArea(
-                    child: Column(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 40),
-                            child: Center(
-                              child: Transform.scale(
-                                scale: 0.8,
-                                child: Lottie.asset(slide.lottiePath, fit: BoxFit.contain),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Container(),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              } else if (index == 2) {
-                return Container(
-                  color: _slides[index].color,
-                  child: SafeArea(
-                    child: Column(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 15),
-                            child: Center(
-                              child: Transform.scale(
-                                scale: 1.3,
-                                child: Lottie.asset(slide.lottiePath, fit: BoxFit.contain),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Container(),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              } else {
-                return Container(
-                  color: _slides[index].color,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.shopping_cart,
-                          size: 100,
-                          color: Colors.white,
-                        ),
-                        SizedBox(height: 30),
-                        Text(
-                          _slides[index].title,
-                          style: GoogleFonts.poppins(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 20),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 40),
-                          child: Text(
-                            _slides[index].description,
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              color: Colors.white,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
+                ),
+              );
             },
           ),
           if (_showSliderBox)
@@ -618,7 +453,7 @@ class OnboardingSlide {
   final String title;
   final String description;
   final String subtitle;
-  final String lottiePath;
+  final String imagePath;
   final String buttonText;
   final Color buttonColor;
   final String locationText;
@@ -628,7 +463,7 @@ class OnboardingSlide {
     required this.title,
     required this.description,
     required this.subtitle,
-    required this.lottiePath,
+    required this.imagePath,
     required this.buttonText,
     required this.buttonColor,
     required this.locationText,

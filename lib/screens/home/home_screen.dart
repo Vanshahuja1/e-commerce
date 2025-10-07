@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '/models/user_model.dart';
 import '/services/auth_service.dart';
 import '/services/cart_service.dart';
 import '/widgets/header.dart';
-import '/widgets/search.dart';  // Add this import
+import '/widgets/app_drawer.dart';
+import '/widgets/search.dart';
 import '/widgets/hero.dart';
 import '/widgets/category.dart';
 import '/widgets/products.dart';
@@ -11,7 +14,6 @@ import '/widgets/footer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
-
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -20,12 +22,14 @@ class _HomeScreenState extends State<HomeScreen> {
   UserModel? _currentUser;
   int _cartItemCount = 0;
   bool _isLoggedIn = false;
+  List<dynamic> _products = [];
   final GlobalKey<ProductsSectionState> _productsKey = GlobalKey<ProductsSectionState>();
 
   @override
   void initState() {
     super.initState();
     _checkAuthStatus();
+    _fetchProducts();
   }
 
   Future<void> _checkAuthStatus() async {
@@ -46,6 +50,58 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_isLoggedIn) {
       _cartItemCount = await CartService.getCartItemCount();
       if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _fetchProducts() async {
+    try {
+      List<dynamic> allProducts = [];
+      int page = 1;
+      int totalPages = 1;
+
+      do {
+        final uri = Uri.parse(
+            'https://e-com-backend-x67v.onrender.com/api/admin-items?page=' + page.toString());
+        final response = await http.get(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode != 200) {
+          return;
+        }
+
+        final data = json.decode(response.body);
+
+        if (data is List) {
+          allProducts = data;
+          totalPages = 1;
+          break;
+        }
+
+        if (data is Map && data.containsKey('items')) {
+          final items = (data['items'] as List?) ?? [];
+          allProducts.addAll(items);
+          final tp = data['totalPages'];
+          totalPages = tp is int ? tp : int.tryParse(tp?.toString() ?? '1') ?? 1;
+        } else if (data is Map && data.containsKey('data')) {
+          allProducts = (data['data'] as List?) ?? [];
+          totalPages = 1;
+          break;
+        } else {
+          allProducts = [data];
+          totalPages = 1;
+          break;
+        }
+
+        page++;
+      } while (page <= totalPages);
+
+      setState(() {
+        _products = allProducts;
+      });
+    } catch (e) {
+      // Handle error
     }
   }
 
@@ -70,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Text('Refreshing...'),
               ],
             ),
-            backgroundColor: Colors.green.shade600,
+            backgroundColor: Colors.red.shade400,
             duration: const Duration(seconds: 1),
           ),
         );
@@ -80,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _checkAuthStatus();
       
       // Refresh all data concurrently if logged in
-      List<Future> futures = [_refreshProducts()];
+      List<Future> futures = [_refreshProducts(), _fetchProducts()];
       if (_isLoggedIn) {
         futures.addAll([_loadUser(), _loadCartCount()]);
       }
@@ -98,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Text('Refreshed successfully!'),
               ],
             ),
-            backgroundColor: Colors.green.shade600,
+            backgroundColor: Colors.red.shade400,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -115,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text('Refresh failed: ${e.toString()}'),
               ],
             ),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: Colors.red.shade400,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -210,6 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: AppDrawer(products: _products),
       backgroundColor: Colors.grey.shade50,
       appBar: Header(
         cartItemCount: _cartItemCount,
@@ -229,7 +286,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
-        color: Colors.green.shade700,
+        color: Colors.red.shade400,
         backgroundColor: Colors.white,
         strokeWidth: 3,
         displacement: 40,

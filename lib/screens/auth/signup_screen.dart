@@ -106,9 +106,9 @@ class _SignupScreenState extends State<SignupScreen> {
       case 'Fair':
         return Colors.yellow;
       case 'Good':
-        return Colors.lightGreen;
+        return Colors.red;
       case 'Strong':
-        return Colors.green;
+        return Colors.red;
       default:
         return Colors.red;
     }
@@ -468,14 +468,14 @@ class _SignupScreenState extends State<SignupScreen> {
           Icon(
             isMet ? Icons.check_circle : Icons.radio_button_unchecked,
             size: 12,
-            color: isMet ? Colors.green : AppColors.textSecondary,
+            color: isMet ? Colors.red : AppColors.textSecondary,
           ),
           const SizedBox(width: 6),
           Text(
             requirement,
             style: GoogleFonts.inter(
               fontSize: 11,
-              color: isMet ? Colors.green : AppColors.textSecondary,
+              color: isMet ? Colors.red : AppColors.textSecondary,
             ),
           ),
         ],

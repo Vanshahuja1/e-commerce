@@ -224,14 +224,14 @@ class OrderInvoiceGenerator {
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(8),
                             child: pw.Text(
-                              '\$${item.price.toStringAsFixed(2)}',
+                              '\₹${item.price.toStringAsFixed(2)}',
                               textAlign: pw.TextAlign.right,
                             ),
                           ),
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(8),
                             child: pw.Text(
-                              '\$${(item.price * item.quantity).toStringAsFixed(2)}',
+                              '\₹${(item.price * item.quantity).toStringAsFixed(2)}',
                               textAlign: pw.TextAlign.right,
                             ),
                           ),
@@ -253,7 +253,7 @@ class OrderInvoiceGenerator {
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
                           pw.Text('Subtotal:'),
-                          pw.Text('\$${subtotal.toStringAsFixed(2)}'),
+                          pw.Text('\₹${subtotal.toStringAsFixed(2)}'),
                         ],
                       ),
                       pw.SizedBox(height: 5),
@@ -261,7 +261,7 @@ class OrderInvoiceGenerator {
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
                           pw.Text('Tax (10%):'),
-                          pw.Text('\$${tax.toStringAsFixed(2)}'),
+                          pw.Text('\₹${tax.toStringAsFixed(2)}'),
                         ],
                       ),
                       pw.SizedBox(height: 5),
@@ -269,7 +269,7 @@ class OrderInvoiceGenerator {
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
                           pw.Text('Shipping:'),
-                          pw.Text('\$${shipping.toStringAsFixed(2)}'),
+                          pw.Text('\₹${shipping.toStringAsFixed(2)}'),
                         ],
                       ),
                       pw.Divider(),
@@ -284,7 +284,7 @@ class OrderInvoiceGenerator {
                             ),
                           ),
                           pw.Text(
-                            '\$${total.toStringAsFixed(2)}',
+                            '\₹${total.toStringAsFixed(2)}',
                             style: pw.TextStyle(
                               fontSize: 16,
                               fontWeight: pw.FontWeight.bold,
