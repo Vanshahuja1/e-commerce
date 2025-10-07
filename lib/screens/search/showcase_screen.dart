@@ -9,6 +9,8 @@ import '/widgets/header.dart';
 import '/services/auth_service.dart';
 import '/widgets/products.dart'; // Import the ProductsSection
 
+
+
 class ShowcaseScreen extends StatefulWidget {
   const ShowcaseScreen({Key? key}) : super(key: key);
 
@@ -420,14 +422,17 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
 
                  
 
-                  // Quantity Selector and Total Price (only if available)
+                  // Quantity Selector (only if available)
                   if (product!['isAvailable'] == true) ...[
                     _buildQuantitySelector(),
+<<<<<<< HEAD
                     const SizedBox(height: 16),
                     // Info Accordions (after quantity)
                     _buildInfoAccordions(),
                     const SizedBox(height: 16),
                    
+=======
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
                   ],
                 ],
               ),
@@ -1056,7 +1061,43 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     );
   }
 
+<<<<<<< HEAD
 
+=======
+  Widget _buildProductDetailsSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Product Details',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildDetailRow('Product ID', product!['_id']?.toString() ?? 'N/A'),
+          _buildDetailRow('Unit', product!['unit']?.toString() ?? 'N/A'),
+          _buildDetailRow('Available Quantity', '${product!['quantity']?.toString() ?? '0'} ${product!['unit']?.toString() ?? 'units'}'),
+          if (product!['discount'] != null && (double.tryParse(product!['discount'].toString()) ?? 0) > 0)
+            _buildDetailRow('Discount', '${product!['discount']}%'),
+          if (product!['tax'] != null && (double.tryParse(product!['tax'].toString()) ?? 0) > 0)
+            _buildDetailRow('Tax', '${product!['tax']}%'),
+          if (product!['hasVAT'] == true)
+            _buildDetailRow('VAT', 'Applicable'),
+        ],
+      ),
+    );
+  }
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
 
   Widget _buildQuantitySelector() {
     int maxQuantity = int.tryParse(product!['quantity']?.toString() ?? '1') ?? 1;
@@ -1124,7 +1165,11 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     );
   }
 
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
 
   Widget _buildBottomButton() {
     bool isAvailable = product!['isAvailable'] == true;

@@ -192,7 +192,7 @@ class OrderInvoiceGenerator {
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
                         child: pw.Text(
-                          'Price',
+                          'Price (BHD)',
                           style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                           textAlign: pw.TextAlign.right,
                         ),
@@ -200,7 +200,7 @@ class OrderInvoiceGenerator {
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
                         child: pw.Text(
-                          'Total',
+                          'Total (BHD)',
                           style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                           textAlign: pw.TextAlign.right,
                         ),
@@ -224,14 +224,22 @@ class OrderInvoiceGenerator {
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(8),
                             child: pw.Text(
+<<<<<<< HEAD
                               '\₹${item.price.toStringAsFixed(2)}',
+=======
+                              'BHD ${item.price.toStringAsFixed(2)}',
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
                               textAlign: pw.TextAlign.right,
                             ),
                           ),
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(8),
                             child: pw.Text(
+<<<<<<< HEAD
                               '\₹${(item.price * item.quantity).toStringAsFixed(2)}',
+=======
+                              'BHD ${(item.price * item.quantity).toStringAsFixed(2)}',
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
                               textAlign: pw.TextAlign.right,
                             ),
                           ),
@@ -253,7 +261,11 @@ class OrderInvoiceGenerator {
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
                           pw.Text('Subtotal:'),
+<<<<<<< HEAD
                           pw.Text('\₹${subtotal.toStringAsFixed(2)}'),
+=======
+                          pw.Text('BHD ${subtotal.toStringAsFixed(2)}'),
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
                         ],
                       ),
                       pw.SizedBox(height: 5),
@@ -261,7 +273,11 @@ class OrderInvoiceGenerator {
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
                           pw.Text('Tax (10%):'),
+<<<<<<< HEAD
                           pw.Text('\₹${tax.toStringAsFixed(2)}'),
+=======
+                          pw.Text('BHD ${tax.toStringAsFixed(2)}'),
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
                         ],
                       ),
                       pw.SizedBox(height: 5),
@@ -269,7 +285,11 @@ class OrderInvoiceGenerator {
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
                           pw.Text('Shipping:'),
+<<<<<<< HEAD
                           pw.Text('\₹${shipping.toStringAsFixed(2)}'),
+=======
+                          pw.Text('BHD ${shipping.toStringAsFixed(2)}'),
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
                         ],
                       ),
                       pw.Divider(),
@@ -284,7 +304,11 @@ class OrderInvoiceGenerator {
                             ),
                           ),
                           pw.Text(
+<<<<<<< HEAD
                             '\₹${total.toStringAsFixed(2)}',
+=======
+                            'BHD ${total.toStringAsFixed(2)}',
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
                             style: pw.TextStyle(
                               fontSize: 16,
                               fontWeight: pw.FontWeight.bold,

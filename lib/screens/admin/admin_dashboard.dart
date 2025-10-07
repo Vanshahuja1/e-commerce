@@ -278,6 +278,13 @@ class _AdminDashboardState extends State<AdminDashboard> with TickerProviderStat
   void initState() {
     super.initState();
     _loadAllData();
+    // Poll orders periodically to simulate real-time updates
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 10));
+      if (!mounted) return false;
+      await _fetchOrders();
+      return true; // keep polling while widget is mounted
+    });
     _userSearchController.addListener(() {
       setState(() {
         _userSearchQuery = _userSearchController.text;
@@ -2731,7 +2738,11 @@ Widget _productFilterDropdown() {
                         Row(
                           children: [
                             Text(
+<<<<<<< HEAD
                               '\₹${product.price.toStringAsFixed(2)}',
+=======
+                              'BHD ${product.price.toStringAsFixed(2)}',
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
                               style: TextStyle(
                                 color: product.isAvailable
                                     ? Colors.green
@@ -2939,7 +2950,11 @@ Widget _productFilterDropdown() {
                             ),
                             const SizedBox(height: 2),
                             Text(
+<<<<<<< HEAD
                               '\₹${product.price.toStringAsFixed(2)}',
+=======
+                              'BHD ${product.price.toStringAsFixed(2)}',
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
                               style: TextStyle(
                                 color: product.isAvailable
                                     ? Colors.green
@@ -3257,7 +3272,11 @@ Widget _productFilterDropdown() {
                     ),
                     const SizedBox(height: 4),
                     Text(
+<<<<<<< HEAD
                       '\₹${order.totalAmount.toStringAsFixed(2)}',
+=======
+                      'BHD ${order.totalAmount.toStringAsFixed(2)}',
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
                       style: const TextStyle(
                         color: Colors.green,
                         fontWeight: FontWeight.bold,
@@ -3277,7 +3296,26 @@ Widget _productFilterDropdown() {
               'Date: ${_formatDate(order.createdAt)}',
               style: const TextStyle(color: Colors.grey, fontSize: 12),
             ),
+<<<<<<< HEAD
             // Buttons removed as requested
+=======
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.download, size: 16),
+                    label: const Text("Download Invoice"),
+                    onPressed: () => _downloadInvoice(order.id),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.withOpacity(0.2),
+                      foregroundColor: Colors.green,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
           ],
         ),
       ),
@@ -3435,7 +3473,11 @@ class _UserDetailsDialog extends StatelessWidget {
                 Expanded(
                   child: _statCard(
                     'Total Spent',
+<<<<<<< HEAD
                     '\₹${userDetails.totalSpent.toStringAsFixed(2)}',
+=======
+                    'BHD ${userDetails.totalSpent.toStringAsFixed(2)}',
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
                     Icons.attach_money,
                     Colors.green,
                   ),
@@ -3498,7 +3540,11 @@ class _UserDetailsDialog extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
+<<<<<<< HEAD
                                       '\₹${order.totalAmount.toStringAsFixed(2)}',
+=======
+                                      'BHD ${order.totalAmount.toStringAsFixed(2)}',
+>>>>>>> 563ff661acda11528f59a5b6b21c0107f0d5efb6
                                       style: const TextStyle(
                                         color: Colors.green,
                                         fontWeight: FontWeight.bold,
