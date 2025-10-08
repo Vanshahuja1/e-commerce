@@ -52,7 +52,7 @@ class GroceryApp extends StatelessWidget {
       title: 'Kanwarji\'s',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
-      initialRoute: AppRoutes.splash,
+      initialRoute: AppRoutes.home,
       onGenerateRoute: _generateRoute,
       builder: (context, child) {
         return MediaQuery(

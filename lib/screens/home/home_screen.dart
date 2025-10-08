@@ -22,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   UserModel? _currentUser;
   int _cartItemCount = 0;
   bool _isLoggedIn = false;
+  bool _isCheckingAuth = true;
   List<dynamic> _products = [];
   final GlobalKey<ProductsSectionState> _productsKey = GlobalKey<ProductsSectionState>();
 
@@ -29,16 +30,31 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _checkAuthStatus();
-    _fetchProducts();
   }
 
   Future<void> _checkAuthStatus() async {
     _isLoggedIn = await AuthService.isLoggedIn();
-    if (_isLoggedIn) {
-      await _loadUser();
-      await _loadCartCount();
+    
+    if (!_isLoggedIn) {
+      // User is not logged in, redirect to login
+      if (mounted) {
+        setState(() => _isCheckingAuth = false);
+        // Use addPostFrameCallback to navigate after the current frame
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.pushReplacementNamed(context, '/login');
+        });
+      }
+      return;
     }
-    if (mounted) setState(() {});
+    
+    // User is logged in, load data
+    await _loadUser();
+    await _loadCartCount();
+    await _fetchProducts();
+    
+    if (mounted) {
+      setState(() => _isCheckingAuth = false);
+    }
   }
 
   Future<void> _loadUser() async {
@@ -195,11 +211,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Handle search functionality
   void _handleSearch(String query) {
-    if (!_isLoggedIn) {
-      Navigator.pushNamed(context, '/login');
-      return;
-    }
-    
     Navigator.pushNamed(
       context,
       '/search',
@@ -208,11 +219,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleCartNavigation() {
-    if (!_isLoggedIn) {
-      Navigator.pushNamed(context, '/login');
-      return;
-    }
-    
     Navigator.pushNamed(context, '/cart').then((_) {
       // Refresh cart count when returning from cart
       _refreshCartCount();
@@ -220,11 +226,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleProfileNavigation() {
-    if (!_isLoggedIn) {
-      Navigator.pushNamed(context, '/login');
-      return;
-    }
-    
     Navigator.pushNamed(context, '/profile').then((_) {
       // Refresh user data when returning from profile
       _loadUser();
@@ -232,39 +233,54 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleSearchNavigation() {
-    if (!_isLoggedIn) {
-      Navigator.pushNamed(context, '/login');
-      return;
-    }
-    
     Navigator.pushNamed(context, '/search');
   }
 
   void _handleCategoriesNavigation() {
     // Navigate to categories page or scroll to categories section
-    // For now, we can scroll to the top where categories are located
-    // Or navigate to a dedicated categories page if you have one
-    if (!_isLoggedIn) {
-      Navigator.pushNamed(context, '/login');
-      return;
-    }
-    
     Navigator.pushNamed(context, '/search');
   }
 
   void _handleDiscountNavigation() {
     // Navigate to discount
-    // You can customize this based on your needs
-    if (!_isLoggedIn) {
-      Navigator.pushNamed(context, '/login');
-      return;
-    }
-    
-    Navigator.pushNamed(context, '/discount'); // <-- update to '/discount'
+    Navigator.pushNamed(context, '/discount');
   }
 
   @override
   Widget build(BuildContext context) {
+    // Show loading screen while checking authentication
+    if (_isCheckingAuth) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                color: Colors.red.shade400,
+                strokeWidth: 3,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Loading...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Only show the main content if logged in
+    // (though we redirect in _checkAuthStatus, this is a safety check)
+    if (!_isLoggedIn) {
+      return const SizedBox.shrink();
+    }
+
     return Scaffold(
       drawer: AppDrawer(products: _products),
       backgroundColor: Colors.grey.shade50,
@@ -291,7 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
         strokeWidth: 3,
         displacement: 40,
         child: SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(), // This ensures pull-to-refresh works even when content doesn't fill the screen
+          physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             children: [
               // Add SearchWidget right after the header
@@ -300,13 +316,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 hintText: 'Search For Product',
               ),
               const SizedBox(height: 2),
-              const CategorySection(),        // Move this first
-              // Move this second  
+              const CategorySection(),
               const SizedBox(height: 8),
-              ProductsSection(               // Keep this third
+              ProductsSection(
                 key: _productsKey,
                 refreshCartCount: _refreshCartCount,
-                isGuestMode: !_isLoggedIn,
+                isGuestMode: false, // Always false since user must be logged in
               ),
               const SizedBox(height: 24),
               const SizedBox(height: 50),
@@ -320,7 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: 0,
         onHomeTap: () {},
         onCategoriesTap: _handleCategoriesNavigation,
-        onDiscountTap: _handleDiscountNavigation, // <-- this will now redirect to '/discount'
+        onDiscountTap: _handleDiscountNavigation,
         onProfileTap: _handleProfileNavigation,
       ),
     );

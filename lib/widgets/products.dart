@@ -6,10 +6,10 @@ import '../services/cart_service.dart';
 class ProductsSection extends StatefulWidget {
   final VoidCallback? refreshCartCount;
   final bool isGuestMode;
-  final bool smallAddButton; // whether to render smaller add buttons
-  final int crossAxisCount; // number of columns in grid
-  final String? filterCategory; // optional category filter
-  final String? filterQuery; // optional text query filter
+  final bool smallAddButton;
+  final int crossAxisCount;
+  final String? filterCategory;
+  final String? filterQuery;
 
   const ProductsSection({
     Key? key,
@@ -30,7 +30,6 @@ class ProductsSectionState extends State<ProductsSection> {
   bool isLoading = true;
   String? error;
   Map<String, int> cartQuantities = {};
-  // track current page index for product image carousels
   final Map<String, int> _imagePageIndex = {};
   
   @override
@@ -39,6 +38,16 @@ class ProductsSectionState extends State<ProductsSection> {
     fetchProducts();
     if (!widget.isGuestMode) {
       loadCartQuantities();
+    }
+  }
+
+  @override
+  void didUpdateWidget(ProductsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Re-fetch and filter when filter parameters change
+    if (oldWidget.filterCategory != widget.filterCategory ||
+        oldWidget.filterQuery != widget.filterQuery) {
+      fetchProducts();
     }
   }
 
@@ -132,7 +141,6 @@ class ProductsSectionState extends State<ProductsSection> {
 
         final data = json.decode(response.body);
 
-        // If backend returns a raw list (no pagination), use it directly
         if (data is List) {
           allProducts = data;
           totalPages = 1;
@@ -158,21 +166,43 @@ class ProductsSectionState extends State<ProductsSection> {
       } while (page <= totalPages);
 
       setState(() {
-        // Apply optional filters from widget
+        // Apply enhanced filtering logic matching SearchScreen
         var displayed = allProducts;
-        if (widget.filterCategory != null && widget.filterCategory!.isNotEmpty) {
-          displayed = displayed.where((p) {
-            final cat = (p['category'] ?? '').toString().toLowerCase();
-            return cat.contains(widget.filterCategory!.toLowerCase());
+        
+        final query = (widget.filterQuery ?? '').toLowerCase().trim();
+        final category = widget.filterCategory;
+
+        if (query.isEmpty && category == null) {
+          // No filters, show all
+          displayed = List.from(allProducts);
+        } else {
+          displayed = allProducts.where((product) {
+            final name = product['name']?.toString().toLowerCase() ?? '';
+            final description = product['description']?.toString().toLowerCase() ?? '';
+            final productCategory = product['category']?.toString().toLowerCase() ?? '';
+
+            // Match search query
+            bool matchesSearch = query.isEmpty ||
+                name.contains(query) ||
+                description.contains(query) ||
+                productCategory.contains(query);
+
+            // Match category filter
+            bool matchesCategory = category == null;
+            if (category != null) {
+              final selectedCategoryLower = category.toLowerCase();
+              matchesCategory = productCategory == selectedCategoryLower ||
+                  productCategory.contains(selectedCategoryLower) ||
+                  selectedCategoryLower.contains(productCategory);
+            }
+
+            return matchesSearch && matchesCategory;
           }).toList();
         }
-        if (widget.filterQuery != null && widget.filterQuery!.isNotEmpty) {
-          final q = widget.filterQuery!.toLowerCase();
-          displayed = displayed.where((p) {
-            final name = (p['name'] ?? '').toString().toLowerCase();
-            return name.contains(q);
-          }).toList();
-        }
+
+        print('DEBUG ProductsSection: Filtered ${displayed.length} products from ${allProducts.length} total');
+        print('DEBUG ProductsSection: filterQuery="$query", filterCategory="$category"');
+        
         products = displayed;
         isLoading = false;
       });
@@ -290,17 +320,19 @@ class ProductsSectionState extends State<ProductsSection> {
                         Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey.shade400),
                         const SizedBox(height: 16),
                         Text(
-                          'No products available',
-                          style: TextStyle(color: Colors.grey.shade600),
+                          'No products found',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: () => refreshProducts(),
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Refresh'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade400,
-                            foregroundColor: Colors.white,
+                        const SizedBox(height: 8),
+                        Text(
+                          'Try adjusting your filters',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 14,
                           ),
                         ),
                       ],
@@ -312,10 +344,9 @@ class ProductsSectionState extends State<ProductsSection> {
                   padding: const EdgeInsets.only(bottom: 20),
                   child: GridView.builder(
                     shrinkWrap: true,
-                      physics: const ClampingScrollPhysics(),
-
+                    physics: const ClampingScrollPhysics(),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: widget.crossAxisCount,
+                      crossAxisCount: widget.crossAxisCount,
                       crossAxisSpacing: 8,
                       mainAxisSpacing: 12,
                       childAspectRatio: _getChildAspectRatio(screenWidth),
@@ -334,17 +365,16 @@ class ProductsSectionState extends State<ProductsSection> {
   }
 
   double _getChildAspectRatio(double screenWidth) {
-    // Slightly reduced aspect ratios to just fix the 15px overflow
     if (screenWidth > 1200) {
-      return 0.85; // Just enough to fix overflow
+      return 0.85;
     } else if (screenWidth > 900) {
-      return 0.82; // Just enough to fix overflow
+      return 0.82;
     } else if (screenWidth > 600) {
-      return 0.80; // Just enough to fix overflow
+      return 0.80;
     } else if (screenWidth > 400) {
-      return 0.78; // Just enough to fix overflow
+      return 0.78;
     } else {
-      return 0.75; // Just enough to fix overflow
+      return 0.75;
     }
   }
 
@@ -352,10 +382,9 @@ class ProductsSectionState extends State<ProductsSection> {
     String productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
     int quantity = cartQuantities[productId] ?? 0;
 
-  double originalPrice = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
-  double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0.0;
+    double originalPrice = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
+    double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0.0;
     
-    // Calculate discounted price (this is what should be shown on cards)
     double discountedPrice = originalPrice * (1 - discount / 100);
     bool hasDiscount = discount > 0;
 
@@ -386,7 +415,6 @@ class ProductsSectionState extends State<ProductsSection> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Section with Horizontal PageView for multiple images
             Expanded(
               flex: 5,
               child: Container(
@@ -401,7 +429,6 @@ class ProductsSectionState extends State<ProductsSection> {
                 child: _buildImageCarousel(product, screenWidth),
               ),
             ),
-            // Product Details Section 
             Expanded(
               flex: 4,
               child: Padding(
@@ -411,7 +438,6 @@ class ProductsSectionState extends State<ProductsSection> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Product Name with Add Button
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -433,10 +459,8 @@ class ProductsSectionState extends State<ProductsSection> {
                       ],
                     ),
                     const SizedBox(height: 1),
-                    // Quantity/Weight - Made more compact
                     Text(
-                    '${product['quantity']} ${product['unit']}'
-,
+                      '${product['quantity']} ${product['unit']}',
                       style: TextStyle(
                         fontSize: screenWidth > 700 ? 9 : 8,
                         color: Colors.grey.shade700,
@@ -446,7 +470,6 @@ class ProductsSectionState extends State<ProductsSection> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    // Price Section - Made more compact
                     hasDiscount
                         ? Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -490,7 +513,6 @@ class ProductsSectionState extends State<ProductsSection> {
   }
 
   Widget _buildAddButton(dynamic product, int quantity, double screenWidth) {
-    // Allow a smaller add button for compact displays across app
     final useSmall = widget.smallAddButton;
     double buttonSize = useSmall ? (screenWidth > 600 ? 24 : 28) : (screenWidth > 600 ? 28 : 36);
     double iconSize = useSmall ? (screenWidth > 600 ? 12 : 14) : (screenWidth > 600 ? 14 : 18);
@@ -594,21 +616,19 @@ class ProductsSectionState extends State<ProductsSection> {
       color: Colors.grey.shade100,
       child: Icon(
         Icons.image,
-        size: 28, // Slightly reduced
+        size: 28,
         color: Colors.grey.shade400,
       ),
     );
   }
 
   Widget _buildImageCarousel(dynamic product, double screenWidth) {
-    // Determine image list: prefer 'images' array, fallback to single 'imageUrl'
     List<String> images = [];
     if (product['images'] is List) {
       images = List<String>.from(product['images'].where((e) => e != null).map((e) => e.toString()));
     }
     if (images.isEmpty && product['imageUrl'] != null) {
       final s = product['imageUrl'].toString();
-      // If comma-separated, split, else single
       if (s.contains(',')) {
         images = s.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
       } else if (s.isNotEmpty) {
@@ -653,7 +673,6 @@ class ProductsSectionState extends State<ProductsSection> {
             );
           },
         ),
-        // Discount and VAT badges (compute locally)
         Builder(builder: (context) {
           double localDiscount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0.0;
           bool localHasDiscount = localDiscount > 0;
@@ -703,7 +722,6 @@ class ProductsSectionState extends State<ProductsSection> {
             ],
           );
         }),
-        // Indicator intentionally hidden per user request
       ],
     );
   }

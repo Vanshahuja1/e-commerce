@@ -431,6 +431,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: Header(
+        showSidebarIcon: false,
         cartItemCount: _cartItemCount,
         currentUser: _currentUser,
         isLoggedIn: _isLoggedIn,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_routes.dart';
 import '../../services/auth_service.dart';
@@ -89,45 +88,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // GOOGLE SIGN-IN - FIXED METHOD CALL
-  Future<void> _handleGoogleLogin() async {
-    try {
-      final result = await AuthService.loginWithGoogle(); // No parameters needed
-      if (!mounted) return;
-      if (result.success) {
-        _showSnackBar('Google login successful!');
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
-      } else {
-        _showSnackBar(result.message, isError: true);
-      }
-    } catch (e) {
-      _showSnackBar('Google login failed: $e', isError: true);
-    }
-  }
-
-  // FACEBOOK SIGN-IN
-  Future<void> _handleFacebookLogin() async {
-    try {
-      final LoginResult result = await FacebookAuth.instance.login();
-      if (result.status == LoginStatus.success) {
-        final accessToken = result.accessToken!.token;
-        // Send accessToken to your backend for verification & login/signup
-        final authResult = await AuthService.loginWithFacebook(accessToken);
-        if (!mounted) return;
-        if (authResult.success) {
-          _showSnackBar('Facebook login successful!');
-          Navigator.pushReplacementNamed(context, AppRoutes.home);
-        } else {
-          _showSnackBar(authResult.message, isError: true);
-        }
-      } else {
-        _showSnackBar('Facebook login cancelled or failed.', isError: true);
-      }
-    } catch (e) {
-      _showSnackBar('Facebook login failed: $e', isError: true);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -160,16 +120,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 24),
 
-                // Divider
-                _buildDivider(),
-
-                const SizedBox(height: 24),
-
-                // OAuth Buttons
-                _buildOAuthButtons(),
-
-                const SizedBox(height: 24),
-
                 // Sign Up Link
                 _buildSignUpLink(),
 
@@ -183,43 +133,43 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildWelcomeSection() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      // App Logo
-      Image.asset(
-        'images/logo1.png', // replace with your GIF path, e.g., 'images/logo.gif'
-        width: 80,
-        height: 80,
-        fit: BoxFit.contain,
-      ),
-
-      const SizedBox(height: 24),
-
-      // Welcome Text
-      Text(
-        'Welcome Back!',
-        style: GoogleFonts.inter(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textPrimary,
-          height: 1.2,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // App Logo
+        Image.asset(
+          'images/logo1.png',
+          width: 80,
+          height: 80,
+          fit: BoxFit.contain,
         ),
-      ),
 
-      const SizedBox(height: 8),
+        const SizedBox(height: 24),
 
-      Text(
-        'Sign in to your account to continue shopping',
-        style: GoogleFonts.inter(
-          fontSize: 16,
-          color: AppColors.textSecondary,
-          height: 1.4,
+        // Welcome Text
+        Text(
+          'Welcome Back!',
+          style: GoogleFonts.inter(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+            height: 1.2,
+          ),
         ),
-      ),
-    ],
-  );
-}
+
+        const SizedBox(height: 8),
+
+        Text(
+          'Sign in to your account to continue shopping',
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildLoginForm() {
     return Column(
@@ -288,62 +238,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDivider() {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: AppColors.border)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'OR',
-            style: GoogleFonts.inter(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        const Expanded(child: Divider(color: AppColors.border)),
-      ],
-    );
-  }
-
-  Widget _buildOAuthButtons() {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            icon: Image.asset('images/google.png', height: 24), // Add google_logo.png to your images
-            label: const Text('Continue with Google'),
-            onPressed: _handleGoogleLogin,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              side: BorderSide(color: AppColors.border),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            icon: Image.asset('images/facebook.jpeg', height: 24), // Add facebook_logo.png to your images
-            label: const Text('Continue with Facebook'),
-            onPressed: _handleFacebookLogin,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              side: BorderSide(color: AppColors.border),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
         ),

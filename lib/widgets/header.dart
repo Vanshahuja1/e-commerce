@@ -9,9 +9,9 @@ class Header extends StatefulWidget implements PreferredSizeWidget {
   final bool isLoggedIn;
   final VoidCallback onCartTap;
   final VoidCallback onProfileTap;
-  
-  final VoidCallback? onSearchTap; // Made optional
+  final VoidCallback? onSearchTap;
   final VoidCallback onLogout;
+  final bool showSidebarIcon; // NEW: Added parameter to control sidebar visibility
 
   const Header({
     Key? key,
@@ -20,9 +20,9 @@ class Header extends StatefulWidget implements PreferredSizeWidget {
     this.isLoggedIn = false,
     required this.onCartTap,
     required this.onProfileTap,
-   
-    this.onSearchTap, // Made optional
+    this.onSearchTap,
     required this.onLogout,
+    this.showSidebarIcon = true, // DEFAULT: true so it shows on all other screens
   }) : super(key: key);
 
   @override
@@ -47,7 +47,6 @@ class _HeaderState extends State<Header> {
   @override
   void didUpdateWidget(Header oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Update real-time count when widget updates
     if (widget.isLoggedIn && oldWidget.cartItemCount != widget.cartItemCount) {
       _loadRealTimeCartCount();
     }
@@ -72,7 +71,7 @@ class _HeaderState extends State<Header> {
       print('Error loading cart count: $e');
       if (mounted) {
         setState(() {
-          _realTimeCartCount = widget.cartItemCount; // Fallback to passed count
+          _realTimeCartCount = widget.cartItemCount;
           _isLoadingCart = false;
         });
       }
@@ -90,18 +89,21 @@ class _HeaderState extends State<Header> {
       backgroundColor: Colors.white,
       elevation: 2,
       centerTitle: true,
-      leading: Builder(
-        builder: (ctx) => IconButton(
-          icon: const Icon(Icons.menu, color: Colors.black87),
-          tooltip: 'Menu',
-          onPressed: () {
-            final scaffoldState = Scaffold.maybeOf(ctx);
-            if (scaffoldState?.hasDrawer ?? false) {
-              scaffoldState!.openDrawer();
-            }
-          },
-        ),
-      ),
+      // MODIFIED: Only show leading icon if showSidebarIcon is true
+      leading: widget.showSidebarIcon
+          ? Builder(
+              builder: (ctx) => IconButton(
+                icon: const Icon(Icons.menu, color: Colors.black87),
+                tooltip: 'Menu',
+                onPressed: () {
+                  final scaffoldState = Scaffold.maybeOf(ctx);
+                  if (scaffoldState?.hasDrawer ?? false) {
+                    scaffoldState!.openDrawer();
+                  }
+                },
+              ),
+            )
+          : null, // Hide the sidebar icon when showSidebarIcon is false
       title: Padding(
         padding: const EdgeInsets.only(top: 6),
         child: SizedBox(
@@ -114,8 +116,6 @@ class _HeaderState extends State<Header> {
   }
 
   List<Widget> _buildActions(bool isDesktop, bool isTablet, bool isMobile, BuildContext context) {
-    // Categories previously accessible via three-dot menu are now in the drawer.
-    // Keep cart and profile actions as before.
     return <Widget>[
       const SizedBox(width: 8),
       _buildCartButton(context),
@@ -126,7 +126,6 @@ class _HeaderState extends State<Header> {
   }
 
   Widget _buildCartButton(BuildContext context) {
-    // Use real-time count if available and logged in, otherwise show 0
     final displayCount = widget.isLoggedIn ? (_realTimeCartCount > 0 ? _realTimeCartCount : widget.cartItemCount) : 0;
     
     return Stack(

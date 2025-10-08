@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
-import '../../models/user_model.dart';
 import 'otp_verification_screen.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -25,8 +23,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
-  bool _isGoogleLoading = false;
-  bool _isFacebookLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _agreeToTerms = false;
@@ -106,9 +102,9 @@ class _SignupScreenState extends State<SignupScreen> {
       case 'Fair':
         return Colors.yellow;
       case 'Good':
-        return Colors.red;
+        return Colors.lightGreen;
       case 'Strong':
-        return Colors.red;
+        return Colors.green;
       default:
         return Colors.red;
     }
@@ -156,83 +152,6 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  // FIXED GOOGLE SIGN-UP/LOGIN - No parameters needed
-  Future<void> _handleGoogleLogin() async {
-    setState(() => _isGoogleLoading = true);
-    
-    try {
-      final result = await AuthService.loginWithGoogle();
-      
-      if (!mounted) return;
-      
-      if (result.success) {
-        _showSnackBar('Google authentication successful!', isError: false);
-        
-        // Check user type and redirect accordingly
-        if (result.user != null) {
-          if (result.user!.userType == UserType.admin) {
-            Navigator.pushReplacementNamed(context, '/admin');
-          } else {
-            Navigator.pushReplacementNamed(context, AppRoutes.home);
-          }
-        } else {
-          Navigator.pushReplacementNamed(context, AppRoutes.home);
-        }
-      } else {
-        _showSnackBar(result.message, isError: true);
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isGoogleLoading = false);
-      }
-    }
-  }
-
-  // FACEBOOK SIGN-UP/LOGIN
-  Future<void> _handleFacebookLogin() async {
-    setState(() => _isFacebookLoading = true);
-    
-    try {
-      final LoginResult result = await FacebookAuth.instance.login();
-      
-      if (result.status == LoginStatus.success) {
-        final accessToken = result.accessToken!.token;
-        
-        final authResult = await AuthService.loginWithFacebook(accessToken);
-        
-        if (!mounted) return;
-        
-        if (authResult.success) {
-          _showSnackBar('Facebook authentication successful!', isError: false);
-          
-          if (authResult.user != null) {
-            if (authResult.user!.userType == UserType.admin) {
-              Navigator.pushReplacementNamed(context, '/admin');
-            } else {
-              Navigator.pushReplacementNamed(context, AppRoutes.home);
-            }
-          } else {
-            Navigator.pushReplacementNamed(context, AppRoutes.home);
-          }
-        } else {
-          _showSnackBar(authResult.message, isError: true);
-        }
-      } else if (result.status == LoginStatus.cancelled) {
-        _showSnackBar('Facebook authentication cancelled', isError: true);
-      } else {
-        _showSnackBar('Facebook authentication failed: ${result.message}', isError: true);
-      }
-    } catch (e) {
-      if (mounted) {
-        _showSnackBar('Facebook authentication failed: ${e.toString()}', isError: true);
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isFacebookLoading = false);
-      }
-    }
-  }
-
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -274,9 +193,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   isLoading: _isLoading,
                 ),
                 const SizedBox(height: 24),
-                _buildDivider(),
-                const SizedBox(height: 24),
-                _buildOAuthButtons(),
                 _buildLoginLink(),
                 const SizedBox(height: 40),
               ],
@@ -468,14 +384,14 @@ class _SignupScreenState extends State<SignupScreen> {
           Icon(
             isMet ? Icons.check_circle : Icons.radio_button_unchecked,
             size: 12,
-            color: isMet ? Colors.red : AppColors.textSecondary,
+            color: isMet ? Colors.green : AppColors.textSecondary,
           ),
           const SizedBox(width: 6),
           Text(
             requirement,
             style: GoogleFonts.inter(
               fontSize: 11,
-              color: isMet ? Colors.red : AppColors.textSecondary,
+              color: isMet ? Colors.green : AppColors.textSecondary,
             ),
           ),
         ],
@@ -533,74 +449,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                 ],
               ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDivider() {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: AppColors.border)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'OR',
-            style: GoogleFonts.inter(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        const Expanded(child: Divider(color: AppColors.border)),
-      ],
-    );
-  }
-
-  Widget _buildOAuthButtons() {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            icon: _isGoogleLoading 
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Image.asset('images/google.png', height: 24),
-            label: Text(_isGoogleLoading ? 'Signing up with Google...' : 'Continue with Google'),
-            onPressed: _isGoogleLoading || _isFacebookLoading ? null : _handleGoogleLogin,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              side: BorderSide(color: AppColors.border),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            icon: _isFacebookLoading 
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Image.asset('images/facebook.jpeg', height: 24),
-            label: Text(_isFacebookLoading ? 'Signing up with Facebook...' : 'Continue with Facebook'),
-            onPressed: _isGoogleLoading || _isFacebookLoading ? null : _handleFacebookLogin,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              side: BorderSide(color: AppColors.border),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
         ),

@@ -420,8 +420,8 @@ class DiscountScreenState extends State<DiscountScreen> {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 8,
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                     childAspectRatio: _getChildAspectRatio(screenWidth),
                   ),
