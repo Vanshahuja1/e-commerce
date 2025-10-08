@@ -13,19 +13,20 @@ class AppDrawer extends StatelessWidget {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            DrawerHeader(
+            Container(
+              height: 70, // Much smaller than default DrawerHeader height
               decoration: BoxDecoration(color: Colors.red.shade400),
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 16),
               child: Text(
-                'Categories',
+                'Menu',
                 style: TextStyle(color: Colors.white, fontSize: 24),
               ),
             ),
             ..._getCategories().map((category) {
               final categoryProducts = products.where((p) {
                 final cat = p['category']?.toString().toLowerCase() ?? '';
-                return cat == category.toLowerCase() ||
-                       cat.contains(category.toLowerCase()) ||
-                       category.toLowerCase().contains(cat);
+                return cat.contains(category.toLowerCase());
               }).take(3).toList();
 
               return ExpansionTile(
@@ -67,13 +68,28 @@ class AppDrawer extends StatelessWidget {
   }
 
   List<String> _getCategories() {
-    return const [
-      'Savory',
-      'Namkeen',
-      'Sweet',
-      'Travel Pack Combo',
-      'Value Pack Offers',
-      'Gift Packs',
-    ];
+    // Instead of hardcoded categories, generate from actual product data
+    final Set<String> uniqueCategories = {};
+
+    for (var product in products) {
+      final category = product['category']?.toString();
+      if (category != null && category.isNotEmpty) {
+        uniqueCategories.add(category);
+      }
+    }
+
+    // If no categories found in data, fallback to default categories
+    if (uniqueCategories.isEmpty) {
+      return const [
+        'Savory',
+        'Namkeen',
+        'Sweet',
+        'Travel Pack Combo',
+        'Value Pack Offers',
+        'Gift Packs',
+      ];
+    }
+
+    return uniqueCategories.toList()..sort();
   }
 }

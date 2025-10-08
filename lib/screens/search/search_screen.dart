@@ -41,6 +41,30 @@ class _SearchScreenState extends State<SearchScreen> {
     _initializeScreen();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Read category argument from navigation
+    final arguments = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (arguments != null && arguments.containsKey('category')) {
+      final String categoryFromArgs = arguments['category'] as String;
+      // Set selected category and apply filtering
+      if (mounted) {
+        setState(() {
+          selectedCategory = categoryFromArgs;
+          _searchController.text = categoryFromArgs;
+        });
+        // Apply filtering after products are loaded
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            filterProducts();
+          }
+        });
+      }
+      print('DEBUG: Received category argument: $categoryFromArgs');
+    }
+  }
+
   Future<void> addItemToCart(dynamic product) async {
     // Check login status before adding to cart
     if (!_isLoggedIn) {
@@ -248,6 +272,12 @@ class _SearchScreenState extends State<SearchScreen> {
         final name = product['name']?.toString().toLowerCase() ?? '';
         final description = product['description']?.toString().toLowerCase() ?? '';
         final category = product['category']?.toString().toLowerCase() ?? '';
+
+        // Debug print to see what categories are in the products
+        if (selectedCategory != null) {
+          print('DEBUG: Product category: "$category", Selected category: "$selectedCategory"');
+        }
+
         bool matchesSearch = query.isEmpty ||
             name.contains(query) ||
             description.contains(query) ||
@@ -318,7 +348,19 @@ class _SearchScreenState extends State<SearchScreen> {
     'Gift Packs',
   ];
 
+  // Dynamic categories from products data
+  Set<String> _availableCategories = {};
+
   Widget _buildCategoriesRow() {
+    // Update available categories from products
+    if (products.isNotEmpty && _availableCategories.isEmpty) {
+      _availableCategories = products
+          .map((p) => p['category']?.toString() ?? '')
+          .where((c) => c.isNotEmpty)
+          .toSet();
+      print('DEBUG: Available categories from products: $_availableCategories');
+    }
+
     return SizedBox(
       height: 48,
       child: ListView(
@@ -386,7 +428,6 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Clean, balanced Scaffold to avoid parser errors caused by earlier edits
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: Header(
@@ -413,39 +454,56 @@ class _SearchScreenState extends State<SearchScreen> {
         color: Colors.red.shade400,
         backgroundColor: Colors.white,
         strokeWidth: 2.5,
-        child: Column(
-          children: [
-            // Search box and controls
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.white,
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _searchController,
-                    onChanged: (_) => _onSearchChanged(),
-                    decoration: InputDecoration(
-                      hintText: selectedCategory != null ? 'Search in ${selectedCategory!}...' : 'Search For product',
-                      prefixIcon: Icon(Icons.search, color: Colors.red.shade400),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(icon: const Icon(Icons.clear), onPressed: () { _searchController.clear(); setState(() { selectedCategory = null; }); _onSearchChanged(); })
-                          : null,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.red.shade400, width: 2)),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
+        child: CustomScrollView(
+          slivers: [
+            // Search box and controls as SliverToBoxAdapter
+            SliverToBoxAdapter(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                color: Colors.white,
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _searchController,
+                      onChanged: (_) => _onSearchChanged(),
+                      decoration: InputDecoration(
+                        hintText: selectedCategory != null 
+                            ? 'Search in ${selectedCategory!}...' 
+                            : 'Search For product',
+                        prefixIcon: Icon(Icons.search, color: Colors.red.shade400),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    selectedCategory = null;
+                                  });
+                                  _onSearchChanged();
+                                })
+                            : null,
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey.shade300)),
+                        focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide:
+                                BorderSide(color: Colors.red.shade400, width: 2)),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildCategoriesRow(),
-                  const SizedBox(height: 12),
-                  // horizontal quick-scroller removed - ProductsSection renders all products in a 2x2 grid
-                ],
+                    const SizedBox(height: 12),
+                    _buildCategoriesRow(),
+                    const SizedBox(height: 12),
+                  ],
+                ),
               ),
             ),
-            // Main results area: use the common ProductsSection for consistent layout
-            Expanded(
+            // Products as SliverToBoxAdapter containing SingleChildScrollView
+            SliverToBoxAdapter(
               child: ProductsSection(
                 refreshCartCount: _loadCartCount,
                 isGuestMode: !_isLoggedIn,

@@ -312,7 +312,8 @@ class ProductsSectionState extends State<ProductsSection> {
                   padding: const EdgeInsets.only(bottom: 20),
                   child: GridView.builder(
                     shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
+                      physics: const ClampingScrollPhysics(),
+
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: widget.crossAxisCount,
                       crossAxisSpacing: 8,

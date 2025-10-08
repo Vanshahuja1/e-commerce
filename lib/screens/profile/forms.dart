@@ -70,7 +70,7 @@ class _ItemFormState extends State<ItemForm> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsets.only(
         top: 24,
         bottom: MediaQuery.of(context).padding.bottom + 24,

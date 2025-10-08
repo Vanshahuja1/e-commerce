@@ -7,7 +7,7 @@ import '/services/cart_service.dart';
 import '/widgets/header.dart';
 import '/widgets/app_drawer.dart';
 import '/widgets/search.dart';
-import '/widgets/hero.dart';
+
 import '/widgets/category.dart';
 import '/widgets/products.dart';
 import '/widgets/footer.dart';
@@ -291,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
         strokeWidth: 3,
         displacement: 40,
         child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(), // This ensures pull-to-refresh works even when content doesn't fill the screen
+          physics: const NeverScrollableScrollPhysics(), // This ensures pull-to-refresh works even when content doesn't fill the screen
           child: Column(
             children: [
               // Add SearchWidget right after the header
@@ -301,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 2),
               const CategorySection(),        // Move this first
-              const HeroSection(),           // Move this second  
+              // Move this second  
               const SizedBox(height: 8),
               ProductsSection(               // Keep this third
                 key: _productsKey,
