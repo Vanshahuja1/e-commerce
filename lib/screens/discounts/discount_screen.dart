@@ -287,6 +287,7 @@ class DiscountScreenState extends State<DiscountScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: Header(
+        showSidebarIcon: false,
         cartItemCount: _cartItemCount,
         currentUser: widget.currentUser,
         isLoggedIn: _isUserLoggedIn, // Use internal state instead of widget.isLoggedIn

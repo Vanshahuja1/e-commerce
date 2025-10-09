@@ -357,6 +357,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
       backgroundColor: Colors.grey.shade50,
       appBar: Header(
         cartItemCount: _isAuthenticated ? _cartItemCount : 0,
+        isLoggedIn: _isAuthenticated,  
         onCartTap: _handleCartNavigation, // Use auth-aware navigation
         onProfileTap: _handleProfileNavigation, // Use auth-aware navigation
         onLogout: _handleLogout, // Use proper logout handler
