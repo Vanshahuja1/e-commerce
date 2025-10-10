@@ -403,6 +403,7 @@ class ProductsSectionState extends State<ProductsSection> {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
+          border: Border.all(color: Colors.grey[300]!, width: 1),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -445,7 +446,7 @@ class ProductsSectionState extends State<ProductsSection> {
                           child: Text(
                             product['name']?.toString() ?? 'Unknown Product',
                             style: TextStyle(
-                              fontSize: screenWidth > 600 ? 11 : 9,
+                              fontSize: screenWidth > 600 ? 12 : 10,
                               fontWeight: FontWeight.w600,
                               color: Colors.black87,
                               height: 1.1,
@@ -462,7 +463,7 @@ class ProductsSectionState extends State<ProductsSection> {
                     Text(
                       '${product['quantity']} ${product['unit']}',
                       style: TextStyle(
-                        fontSize: screenWidth > 700 ? 9 : 8,
+                        fontSize: screenWidth > 700 ? 10 : 9,
                         color: Colors.grey.shade700,
                         fontWeight: FontWeight.normal,
                       ),
@@ -478,8 +479,8 @@ class ProductsSectionState extends State<ProductsSection> {
                               Text(
                                 '₹ ${originalPrice.toStringAsFixed(3)}',
                                 style: TextStyle(
-                                  fontSize: screenWidth > 600 ? 9 : 8,
-                                  color: Colors.grey.shade500,
+                                  fontSize: screenWidth > 600 ? 10 : 9,
+                                  color: Colors.grey.shade600,
                                   decoration: TextDecoration.lineThrough,
                                   decorationColor: Colors.grey.shade500,
                                 ),
@@ -487,7 +488,7 @@ class ProductsSectionState extends State<ProductsSection> {
                               Text(
                                 '₹ ${discountedPrice.toStringAsFixed(3)}',
                                 style: TextStyle(
-                                  fontSize: screenWidth > 600 ? 12 : 10,
+                                  fontSize: screenWidth > 600 ? 13 : 11,
                                   fontWeight: FontWeight.bold,
                                   color: const Color.fromARGB(255, 23, 23, 23),
                                 ),
@@ -497,7 +498,7 @@ class ProductsSectionState extends State<ProductsSection> {
                         : Text(
                             '₹ ${discountedPrice.toStringAsFixed(3)}',
                             style: TextStyle(
-                              fontSize: screenWidth > 600 ? 12 : 10,
+                              fontSize: screenWidth > 600 ? 13 : 11,
                               fontWeight: FontWeight.bold,
                               color: Colors.black,
                             ),
@@ -530,7 +531,7 @@ class ProductsSectionState extends State<ProductsSection> {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.shade300,
+                color: Colors.grey.shade500,
                 blurRadius: 3,
                 offset: const Offset(0, 1),
               ),
@@ -552,7 +553,7 @@ class ProductsSectionState extends State<ProductsSection> {
         borderRadius: BorderRadius.circular(5),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.shade300,
+            color: Colors.grey.shade500,
             blurRadius: 3,
             offset: const Offset(0, 1),
           ),

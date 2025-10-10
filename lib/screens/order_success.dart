@@ -117,10 +117,9 @@ class OrderSuccessScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Navigate back to the home screen or a relevant section
-                    Navigator.of(context).popUntil((route) => route.isFirst); // Go back to the first route (usually home)
-                  },
+                onPressed: () {
+  Navigator.pushNamed(context, '/home');
+},
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red[400],
                     padding: const EdgeInsets.symmetric(vertical: 16),

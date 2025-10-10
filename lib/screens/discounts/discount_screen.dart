@@ -332,15 +332,18 @@ class DiscountScreenState extends State<DiscountScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 12),
-              Text(
-                'Discounts',
-                style: TextStyle(
-                  fontSize: screenWidth > 600 ? 28 : 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red.shade400,
-                  letterSpacing: 1.2,
-                ),
-              ),
+            Center(
+  child: Text(
+    'Amazing Discounts',
+    style: TextStyle(
+      fontSize: screenWidth > 600 ? 28 : 20,
+      fontWeight: FontWeight.bold,
+      color: Colors.red.shade400,
+      letterSpacing: 1.2,
+    ),
+  ),
+),
+
               const SizedBox(height: 12),
               if (isLoading)
                 Center(
@@ -472,6 +475,7 @@ class DiscountScreenState extends State<DiscountScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[300]!, width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.grey.shade200,
@@ -529,7 +533,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                             '${discount.toInt()}% OFF',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: screenWidth > 600 ? 7 : 6, // Reduced font size
+                              fontSize: screenWidth > 600 ? 8 : 7, // Reduced font size
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -577,7 +581,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                           child: Text(
                             product['name']?.toString() ?? 'Unknown Product',
                             style: TextStyle(
-                              fontSize: screenWidth > 600 ? 11 : 9, // Slightly reduced
+                              fontSize: screenWidth > 600 ? 12 : 10, // Slightly reduced
                               fontWeight: FontWeight.w600,
                               color: Colors.black87,
                               height: 1.1, // Reduced line height
@@ -596,7 +600,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                     '${product['quantity']} ${product['unit']}'
 ,
                       style: TextStyle(
-                        fontSize: screenWidth > 600 ? 8 : 7, // Reduced font size
+                        fontSize: screenWidth > 600 ? 9 : 8, // Reduced font size
                         color: Colors.grey.shade600,
                         fontWeight: FontWeight.normal,
                       ),
@@ -613,7 +617,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                               Text(
                                 '₹ ${originalPrice.toStringAsFixed(3)}',
                                 style: TextStyle(
-                                  fontSize: screenWidth > 600 ? 9 : 8, // Reduced font size
+                                  fontSize: screenWidth > 600 ? 10 : 9, // Reduced font size
                                   color: Colors.grey.shade500,
                                   decoration: TextDecoration.lineThrough,
                                   decorationColor: Colors.grey.shade500,
@@ -622,7 +626,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                               Text(
                                 '₹ ${discountedPrice.toStringAsFixed(3)}',
                                 style: TextStyle(
-                                  fontSize: screenWidth > 600 ? 12 : 10, // Reduced font size
+                                  fontSize: screenWidth > 600 ? 13 : 11, // Reduced font size
                                   fontWeight: FontWeight.bold,
                                   color: const Color.fromARGB(255, 0, 0, 0),
                                 ),
@@ -632,7 +636,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                         : Text(
                             '₹ ${discountedPrice.toStringAsFixed(3)}',
                             style: TextStyle(
-                              fontSize: screenWidth > 600 ? 12 : 10, // Reduced font size
+                              fontSize: screenWidth > 600 ? 13 : 11, // Reduced font size
                               fontWeight: FontWeight.bold,
                               color: Colors.black,
                             ),
@@ -685,7 +689,7 @@ class DiscountScreenState extends State<DiscountScreen> {
           borderRadius: BorderRadius.circular(13),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.shade300,
+              color: Colors.grey.shade500,
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),

@@ -86,7 +86,7 @@ class _HeaderState extends State<Header> {
     final isMobile = screenWidth < 768;
 
     return AppBar(
-      backgroundColor: Colors.white,
+    backgroundColor: Colors.grey[300],
       elevation: 2,
       centerTitle: true,
       // MODIFIED: Only show leading icon if showSidebarIcon is true

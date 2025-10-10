@@ -453,15 +453,19 @@ class _SearchScreenState extends State<SearchScreen> {
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
         color: Colors.red.shade400,
-        backgroundColor: Colors.white,
+         backgroundColor: Colors.grey.shade200,
         strokeWidth: 2.5,
         child: CustomScrollView(
           slivers: [
             // Search box and controls as SliverToBoxAdapter
             SliverToBoxAdapter(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                color: Colors.white,
+  child: Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,  // ✅ Move color here
+      border: Border.all(color: Colors.grey[300]!, width: 1),
+      borderRadius: BorderRadius.circular(8),
+    ),
                 child: Column(
                   children: [
                     TextField(

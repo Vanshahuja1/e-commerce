@@ -303,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: RefreshIndicator(
         onRefresh: _onRefresh,
         color: Colors.red.shade400,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.grey.shade200,
         strokeWidth: 3,
         displacement: 40,
         child: SingleChildScrollView(

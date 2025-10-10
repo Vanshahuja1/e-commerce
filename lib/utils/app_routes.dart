@@ -21,7 +21,6 @@ class AppRoutes {
   static const String productList = '/product-list';
 
   // Seller Routes
-  static const String becomeSeller = '/become-seller';
   static const String sellerDashboard = '/seller-dashboard';
   static const String addProduct = '/add-product';
   static const String sellerOrders = '/seller-orders';
@@ -36,7 +35,6 @@ class AppRoutes {
   // Address Routes
   static const String addresses = '/addresses';
   static const String addAddress = '/add-address';
-  static const String editAddress = '/edit-address';
 
   // Settings Routes
   static const String settings = '/settings';

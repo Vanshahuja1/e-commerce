@@ -1138,7 +1138,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.shade300,
+              color: Colors.grey.shade500,
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),

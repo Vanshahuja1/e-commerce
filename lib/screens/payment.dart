@@ -798,14 +798,8 @@ if (arguments != null && arguments is Map<String, dynamic>) {
                   icon: Icon(Icons.menu, color: Colors.grey[600]),
                   tooltip: 'Address actions',
                   onPressed: () {
-                    // Open drawer where address management and edit/delete actions are available
-                    final scaffoldState = Scaffold.maybeOf(context);
-                    if (scaffoldState?.hasDrawer ?? false) {
-                      scaffoldState!.openDrawer();
-                    } else {
-                      // Fallback: navigate to addresses screen
-                      Navigator.pushNamed(context, '/addresses');
-                    }
+                    // Show address selection dialog for managing addresses
+                    _showAddressSelectionDialog();
                   },
                 ),
               ],
