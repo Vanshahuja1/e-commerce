@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/cart_service.dart';
+import '../services/local_cart_service.dart';
 
 class ProductsSection extends StatefulWidget {
   final VoidCallback? refreshCartCount;
@@ -36,9 +37,7 @@ class ProductsSectionState extends State<ProductsSection> {
   void initState() {
     super.initState();
     fetchProducts();
-    if (!widget.isGuestMode) {
-      loadCartQuantities();
-    }
+    loadCartQuantities();
   }
 
   @override
@@ -53,7 +52,29 @@ class ProductsSectionState extends State<ProductsSection> {
 
   Future<void> addItemToCart(dynamic product) async {
     if (widget.isGuestMode) {
-      Navigator.pushNamed(context, '/login');
+      try {
+        await LocalCartService.addToCart(Map<String, dynamic>.from(product));
+        await loadCartQuantities();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${product['name']} added to cart'),
+              backgroundColor: Colors.red.shade400,
+              duration: const Duration(milliseconds: 800),
+            ),
+          );
+        }
+        if (widget.refreshCartCount != null) widget.refreshCartCount!();
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error adding item: $e'),
+              backgroundColor: Colors.red.shade400,
+            ),
+          );
+        }
+      }
       return;
     }
     try {
@@ -87,7 +108,9 @@ class ProductsSectionState extends State<ProductsSection> {
 
   Future<void> loadCartQuantities() async {
     try {
-      final cartItems = await CartService.getCartItems();
+      final cartItems = widget.isGuestMode
+          ? await LocalCartService.getCartItems()
+          : await CartService.getCartItems();
       setState(() {
         cartQuantities.clear();
         for (var item in cartItems) {
@@ -107,9 +130,7 @@ class ProductsSectionState extends State<ProductsSection> {
 
   Future<void> refreshProducts() async {
     await fetchProducts();
-    if (!widget.isGuestMode) {
-      await loadCartQuantities();
-    }
+    await loadCartQuantities();
   }
 
   Future<void> fetchProducts() async {
@@ -219,6 +240,26 @@ class ProductsSectionState extends State<ProductsSection> {
       String productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
       int currentQuantity = cartQuantities[productId] ?? 0;
       if (currentQuantity > 0) {
+        if (widget.isGuestMode) {
+          if (currentQuantity == 1) {
+            await LocalCartService.removeFromCart(productId);
+          } else {
+            await LocalCartService.updateQuantity(productId, currentQuantity - 1);
+          }
+          await fetchProducts();
+          await loadCartQuantities();
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${product['name']} ${currentQuantity == 1 ? 'removed from' : 'quantity decreased in'} cart'),
+                backgroundColor: Colors.orange.shade600,
+                duration: const Duration(milliseconds: 800),
+              ),
+            );
+          }
+          if (widget.refreshCartCount != null) widget.refreshCartCount!();
+          return;
+        }
         if (currentQuantity == 1) {
           await CartService.removeFromCart(productId);
         } else {
@@ -235,9 +276,7 @@ class ProductsSectionState extends State<ProductsSection> {
             ),
           );
         }
-        if (widget.refreshCartCount != null) {
-          widget.refreshCartCount!();
-        }
+        if (widget.refreshCartCount != null) widget.refreshCartCount!();
       }
     } catch (e) {
       if (context.mounted) {
@@ -390,15 +429,11 @@ class ProductsSectionState extends State<ProductsSection> {
 
     return GestureDetector(
       onTap: () {
-        if (widget.isGuestMode) {
-          Navigator.pushNamed(context, '/login');
-        } else {
-          Navigator.pushNamed(
-            context,
-            '/showcase',
-            arguments: product,
-          );
-        }
+        Navigator.pushNamed(
+          context,
+          '/showcase',
+          arguments: product,
+        );
       },
       child: Container(
         decoration: BoxDecoration(

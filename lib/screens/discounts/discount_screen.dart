@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/cart_service.dart';
+import '../../services/local_cart_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/footer.dart';
 import '/models/user_model.dart';
@@ -33,7 +34,7 @@ class DiscountScreenState extends State<DiscountScreen> {
   String? error;
   Map<String, int> cartQuantities = {};
   int _cartItemCount = 0;
-  bool _isUserLoggedIn = false; // Internal state to track actual login status
+  bool _isUserLoggedIn = false;
 
   @override
   void initState() {
@@ -42,14 +43,12 @@ class DiscountScreenState extends State<DiscountScreen> {
     fetchDiscountProducts();
   }
 
-  // Check if user is actually logged in by checking auth token
   Future<void> _checkAuthStatus() async {
     final token = await _getToken();
     setState(() {
       _isUserLoggedIn = token != null && token.isNotEmpty;
     });
     
-    // Only load cart data if user is actually logged in
     if (_isUserLoggedIn && !widget.isGuestMode) {
       loadCartQuantities();
       _loadCartCount();
@@ -63,35 +62,29 @@ class DiscountScreenState extends State<DiscountScreen> {
 
   Future<void> _loadCartCount() async {
     if (!_isUserLoggedIn) {
-      setState(() => _cartItemCount = 0);
+      final count = await LocalCartService.getCartItemCount();
+      setState(() => _cartItemCount = count);
       return;
     }
-    
     try {
       final count = await CartService.getCartItemCount();
-      if (mounted) {
-        setState(() => _cartItemCount = count);
-      }
+      if (mounted) setState(() => _cartItemCount = count);
     } catch (e) {
-      print('Error loading cart count: $e');
+      final count = await LocalCartService.getCartItemCount();
+      if (mounted) setState(() => _cartItemCount = count);
     }
   }
 
   Future<void> loadCartQuantities() async {
-    if (!_isUserLoggedIn) return;
-    
     try {
-      final cartItems = await CartService.getCartItems();
+      final cartItems = _isUserLoggedIn
+          ? await CartService.getCartItems()
+          : await LocalCartService.getCartItems();
       setState(() {
         cartQuantities.clear();
         for (var item in cartItems) {
-          String productId = item['_id']?.toString() ??
-              item['productId']?.toString() ??
-              item['id']?.toString() ??
-              '';
-          if (productId.isNotEmpty) {
-            cartQuantities[productId] = item['quantity'] ?? 1;
-          }
+          final id = item['_id']?.toString() ?? item['productId']?.toString() ?? item['id']?.toString() ?? '';
+          if (id.isNotEmpty) cartQuantities[id] = item['quantity'] ?? 1;
         }
       });
     } catch (e) {
@@ -100,7 +93,7 @@ class DiscountScreenState extends State<DiscountScreen> {
   }
 
   Future<void> refreshProducts() async {
-    await _checkAuthStatus(); // Re-check auth status on refresh
+    await _checkAuthStatus();
     await fetchDiscountProducts();
     if (_isUserLoggedIn && !widget.isGuestMode) {
       await loadCartQuantities();
@@ -120,12 +113,11 @@ class DiscountScreenState extends State<DiscountScreen> {
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('API Response: $data'); // Debug print
+        print('API Response: $data');
         setState(() {
           if (data is List) {
             products = data;
           } else if (data is Map && data.containsKey('products')) {
-            // This matches your API response structure
             products = data['products'];
           } else if (data is Map && data.containsKey('items')) {
             products = data['items'];
@@ -151,10 +143,20 @@ class DiscountScreenState extends State<DiscountScreen> {
   }
 
   Future<void> addItemToCart(dynamic product) async {
-    // Check auth token before adding to cart
-    final token = await _getToken();
-    if (token == null || token.isEmpty) {
-      Navigator.pushNamed(context, '/login');
+    if (!_isUserLoggedIn) {
+      await LocalCartService.addToCart(Map<String, dynamic>.from(product));
+      await fetchDiscountProducts();
+      await loadCartQuantities();
+      await _loadCartCount();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product['name']} added to cart'),
+            backgroundColor: Colors.red.shade400,
+            duration: const Duration(milliseconds: 800),
+          ),
+        );
+      }
       return;
     }
     
@@ -189,10 +191,28 @@ class DiscountScreenState extends State<DiscountScreen> {
   }
 
   Future<void> removeItemFromCart(dynamic product) async {
-    // Check auth token before removing from cart
-    final token = await _getToken();
-    if (token == null || token.isEmpty) {
-      Navigator.pushNamed(context, '/login');
+    String productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
+    int currentQuantity = cartQuantities[productId] ?? 0;
+    if (currentQuantity <= 0) return;
+
+    if (!_isUserLoggedIn) {
+      if (currentQuantity == 1) {
+        await LocalCartService.removeFromCart(productId);
+      } else {
+        await LocalCartService.updateQuantity(productId, currentQuantity - 1);
+      }
+      await fetchDiscountProducts();
+      await loadCartQuantities();
+      await _loadCartCount();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product['name']} ${currentQuantity == 1 ? 'removed from' : 'quantity decreased in'} cart'),
+            backgroundColor: Colors.orange.shade600,
+            duration: const Duration(milliseconds: 800),
+          ),
+        );
+      }
       return;
     }
     
@@ -235,17 +255,12 @@ class DiscountScreenState extends State<DiscountScreen> {
   }
 
   Future<void> _handleCartTap() async {
-    final token = await _getToken();
-    if (token != null && token.isNotEmpty) {
-      Navigator.pushNamed(context, '/cart');
-    } else {
-      Navigator.pushNamed(context, '/login');
-    }
+    await Navigator.pushNamed(context, '/cart');
+    await _loadCartCount();
   }
 
   Future<void> _handleProfileTap() async {
-    final token = await _getToken();
-    if (token != null && token.isNotEmpty) {
+    if (_isUserLoggedIn) {
       if (widget.currentUser?.userType == 'admin') {
         Navigator.pushNamed(context, '/admin');
       } else {
@@ -256,30 +271,22 @@ class DiscountScreenState extends State<DiscountScreen> {
     }
   }
 
-  void _handleHomeTap() {
-    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-  }
-
-  void _handleCategoriesTap() {
-    Navigator.pushNamed(context, '/search');
-  }
-
-  void _handleDiscountTap() {
-    // Already on discount screen, just refresh
-    refreshProducts();
-  }
-
   Future<void> _handleCardTap(dynamic product) async {
-    final token = await _getToken();
-    if (token != null && token.isNotEmpty) {
-      Navigator.pushNamed(
-        context,
-        '/showcase',
-        arguments: product,
-      );
-    } else {
-      Navigator.pushNamed(context, '/login');
-    }
+    Navigator.pushNamed(context, '/showcase', arguments: product);
+  }
+
+  // Add missing navigation methods
+  Future<void> _handleHomeTap() async {
+    Navigator.pushNamed(context, '/home');
+  }
+
+  Future<void> _handleCategoriesTap() async {
+    Navigator.pushNamed(context, '/categories');
+  }
+
+  Future<void> _handleDiscountTap() async {
+    // Already on discount screen, do nothing or refresh
+    await refreshProducts();
   }
 
   @override
@@ -290,14 +297,13 @@ class DiscountScreenState extends State<DiscountScreen> {
         showSidebarIcon: false,
         cartItemCount: _cartItemCount,
         currentUser: widget.currentUser,
-        isLoggedIn: _isUserLoggedIn, // Use internal state instead of widget.isLoggedIn
+        isLoggedIn: _isUserLoggedIn,
         onCartTap: _handleCartTap,
         onProfileTap: _handleProfileTap,
         onLogout: widget.onLogout ?? () {},
       ),
       body: Column(
         children: [
-          // Main content area
           Expanded(
             child: RefreshIndicator(
               onRefresh: refreshProducts,
@@ -312,12 +318,12 @@ class DiscountScreenState extends State<DiscountScreen> {
       ),
       bottomNavigationBar: Footer(
         currentUser: widget.currentUser,
-        isLoggedIn: _isUserLoggedIn, // Use internal state instead of widget.isLoggedIn
+        isLoggedIn: _isUserLoggedIn,
         onHomeTap: _handleHomeTap,
         onCategoriesTap: _handleCategoriesTap,
         onDiscountTap: _handleDiscountTap,
         onProfileTap: _handleProfileTap,
-        currentIndex: 2, // Discount tab is index 2
+        currentIndex: 2,
       ),
     );
   }
@@ -332,18 +338,17 @@ class DiscountScreenState extends State<DiscountScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 12),
-            Center(
-  child: Text(
-    'Amazing Discounts',
-    style: TextStyle(
-      fontSize: screenWidth > 600 ? 28 : 20,
-      fontWeight: FontWeight.bold,
-      color: Colors.red.shade400,
-      letterSpacing: 1.2,
-    ),
-  ),
-),
-
+              Center(
+                child: Text(
+                  'Amazing Discounts',
+                  style: TextStyle(
+                    fontSize: screenWidth > 600 ? 28 : 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red.shade400,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
               if (isLoading)
                 Center(
@@ -465,12 +470,11 @@ class DiscountScreenState extends State<DiscountScreen> {
     double tax = double.tryParse(product['tax']?.toString() ?? '0') ?? 0.0;
     bool hasVAT = product['hasVAT'] == true;
     
-    // Calculate discounted price (this is what should be shown on cards)
     double discountedPrice = originalPrice * (1 - discount / 100);
     bool hasDiscount = discount > 0;
 
     return GestureDetector(
-      onTap: () => _handleCardTap(product), // Use the new method that checks auth token
+      onTap: () => _handleCardTap(product),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -487,9 +491,8 @@ class DiscountScreenState extends State<DiscountScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Section 
             Expanded(
-              flex: 5, // Back to original
+              flex: 5,
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -521,19 +524,19 @@ class DiscountScreenState extends State<DiscountScreen> {
                     ),
                     if (hasDiscount)
                       Positioned(
-                        top: 4, // Reduced padding
-                        left: 4, // Reduced padding
+                        top: 4,
+                        left: 4,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), // Reduced padding
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                           decoration: BoxDecoration(
                             color: Colors.red,
-                            borderRadius: BorderRadius.circular(6), // Reduced radius
+                            borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             '${discount.toInt()}% OFF',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: screenWidth > 600 ? 8 : 7, // Reduced font size
+                              fontSize: screenWidth > 600 ? 8 : 7,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -541,19 +544,19 @@ class DiscountScreenState extends State<DiscountScreen> {
                       ),
                     if (hasVAT)
                       Positioned(
-                        top: 4, // Reduced padding
-                        right: 4, // Reduced padding
+                        top: 4,
+                        right: 4,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1), // Reduced padding
+                          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                           decoration: BoxDecoration(
                             color: Colors.blue.shade600,
-                            borderRadius: BorderRadius.circular(4), // Reduced radius
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             'VAT',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: screenWidth > 600 ? 6 : 5, // Reduced font size
+                              fontSize: screenWidth > 600 ? 6 : 5,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -563,17 +566,15 @@ class DiscountScreenState extends State<DiscountScreen> {
                 ),
               ),
             ),
-            // Product Details Section 
             Expanded(
-              flex: 4, // Back to original
+              flex: 4,
               child: Padding(
                 padding: EdgeInsets.symmetric(
-                    horizontal: screenWidth > 600 ? 10 : 8, // Back to original
-                    vertical: screenWidth > 600 ? 8 : 6), // Back to original
+                    horizontal: screenWidth > 600 ? 10 : 8,
+                    vertical: screenWidth > 600 ? 8 : 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Product Name with Add Button
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -581,34 +582,31 @@ class DiscountScreenState extends State<DiscountScreen> {
                           child: Text(
                             product['name']?.toString() ?? 'Unknown Product',
                             style: TextStyle(
-                              fontSize: screenWidth > 600 ? 12 : 10, // Slightly reduced
+                              fontSize: screenWidth > 600 ? 12 : 10,
                               fontWeight: FontWeight.w600,
                               color: Colors.black87,
-                              height: 1.1, // Reduced line height
+                              height: 1.1,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 4), // Reduced spacing
+                        const SizedBox(width: 4),
                         _buildAddButton(product, quantity, screenWidth),
                       ],
                     ),
-                    const SizedBox(height: 1), // Reduced spacing
-                    // Quantity/Weight - Made more compact
+                    const SizedBox(height: 1),
                     Text(
-                    '${product['quantity']} ${product['unit']}'
-,
+                      '${product['quantity']} ${product['unit']}',
                       style: TextStyle(
-                        fontSize: screenWidth > 600 ? 9 : 8, // Reduced font size
+                        fontSize: screenWidth > 600 ? 9 : 8,
                         color: Colors.grey.shade600,
                         fontWeight: FontWeight.normal,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2), // Reduced spacing
-                    // Price Section - Made more compact
+                    const SizedBox(height: 2),
                     hasDiscount
                         ? Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -617,7 +615,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                               Text(
                                 '₹ ${originalPrice.toStringAsFixed(3)}',
                                 style: TextStyle(
-                                  fontSize: screenWidth > 600 ? 10 : 9, // Reduced font size
+                                  fontSize: screenWidth > 600 ? 10 : 9,
                                   color: Colors.grey.shade500,
                                   decoration: TextDecoration.lineThrough,
                                   decorationColor: Colors.grey.shade500,
@@ -626,7 +624,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                               Text(
                                 '₹ ${discountedPrice.toStringAsFixed(3)}',
                                 style: TextStyle(
-                                  fontSize: screenWidth > 600 ? 13 : 11, // Reduced font size
+                                  fontSize: screenWidth > 600 ? 13 : 11,
                                   fontWeight: FontWeight.bold,
                                   color: const Color.fromARGB(255, 0, 0, 0),
                                 ),
@@ -636,7 +634,7 @@ class DiscountScreenState extends State<DiscountScreen> {
                         : Text(
                             '₹ ${discountedPrice.toStringAsFixed(3)}',
                             style: TextStyle(
-                              fontSize: screenWidth > 600 ? 13 : 11, // Reduced font size
+                              fontSize: screenWidth > 600 ? 13 : 11,
                               fontWeight: FontWeight.bold,
                               color: Colors.black,
                             ),

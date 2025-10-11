@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '/models/user_model.dart';
 import '/services/auth_service.dart';
 import '/services/cart_service.dart';
+import '/services/local_cart_service.dart'; // import LocalCartService and support guest cart count
 
 class Header extends StatefulWidget implements PreferredSizeWidget {
   final int cartItemCount;
@@ -35,20 +36,31 @@ class Header extends StatefulWidget implements PreferredSizeWidget {
 class _HeaderState extends State<Header> {
   int _realTimeCartCount = 0;
   bool _isLoadingCart = false;
+  int _guestCartCount = 0; // guest count
 
   @override
   void initState() {
     super.initState();
     if (widget.isLoggedIn) {
       _loadRealTimeCartCount();
+    } else {
+      _loadGuestCartCount(); // 
     }
   }
 
   @override
   void didUpdateWidget(Header oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isLoggedIn && oldWidget.cartItemCount != widget.cartItemCount) {
+    if (widget.isLoggedIn != oldWidget.isLoggedIn) {
+      if (widget.isLoggedIn) {
+        _loadRealTimeCartCount();
+      } else {
+        _loadGuestCartCount();
+      }
+    } else if (oldWidget.cartItemCount != widget.cartItemCount && widget.isLoggedIn) {
       _loadRealTimeCartCount();
+    } else if (!widget.isLoggedIn) {
+      _loadGuestCartCount();
     }
   }
 
@@ -78,6 +90,17 @@ class _HeaderState extends State<Header> {
     }
   }
 
+  Future<void> _loadGuestCartCount() async {
+    try {
+      final count = await LocalCartService.getCartItemCount();
+      if (mounted) {
+        setState(() {
+          _guestCartCount = count;
+        });
+      }
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -86,7 +109,7 @@ class _HeaderState extends State<Header> {
     final isMobile = screenWidth < 768;
 
     return AppBar(
-    backgroundColor: Colors.grey[300],
+      backgroundColor: Colors.grey[300],
       elevation: 2,
       centerTitle: true,
       // MODIFIED: Only show leading icon if showSidebarIcon is true
@@ -126,28 +149,31 @@ class _HeaderState extends State<Header> {
   }
 
   Widget _buildCartButton(BuildContext context) {
-    final displayCount = widget.isLoggedIn ? (_realTimeCartCount > 0 ? _realTimeCartCount : widget.cartItemCount) : 0;
-    
+    final displayCount = widget.isLoggedIn
+        ? (_realTimeCartCount > 0 ? _realTimeCartCount : widget.cartItemCount)
+        : _guestCartCount;
+
     return Stack(
       alignment: Alignment.center,
       children: [
         IconButton(
           icon: const Icon(Icons.shopping_cart),
           color: const Color.fromARGB(255, 11, 11, 11),
-          onPressed: () {
+          onPressed: () async {
+            await Navigator.pushNamed(context, '/cart');
+            // refresh counts after returning
             if (widget.isLoggedIn) {
-              Navigator.pushNamed(context, '/cart');
               _loadRealTimeCartCount();
             } else {
-              Navigator.pushNamed(context, '/login');
+              _loadGuestCartCount();
             }
           },
           tooltip: 'Cart',
           iconSize: 20,
         ),
-        if (displayCount > 0 && widget.isLoggedIn)
+        if (displayCount > 0) // remove isLoggedIn condition
           Positioned(
-            right:4,
+            right: 4,
             top: 8,
             child: Container(
               padding: const EdgeInsets.all(2),

@@ -7,7 +7,7 @@ import '/services/cart_service.dart';
 import '/widgets/header.dart';
 import '/widgets/app_drawer.dart';
 import '/widgets/search.dart';
-
+import '/services/local_cart_service.dart'; // Added import
 import '/widgets/category.dart';
 import '/widgets/products.dart';
 import '/widgets/footer.dart';
@@ -34,39 +34,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _checkAuthStatus() async {
     _isLoggedIn = await AuthService.isLoggedIn();
-    
-    if (!_isLoggedIn) {
-      // User is not logged in, redirect to login
-      if (mounted) {
-        setState(() => _isCheckingAuth = false);
-        // Use addPostFrameCallback to navigate after the current frame
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.pushReplacementNamed(context, '/login');
-        });
-      }
-      return;
-    }
-    
-    // User is logged in, load data
-    await _loadUser();
+
+    await _loadUser(); // only sets when logged in
     await _loadCartCount();
     await _fetchProducts();
-    
+
     if (mounted) {
       setState(() => _isCheckingAuth = false);
     }
   }
 
   Future<void> _loadUser() async {
-    _currentUser = await AuthService.getCurrentUser();
-    if (mounted) setState(() {});
+    if (_isLoggedIn) {
+      _currentUser = await AuthService.getCurrentUser();
+      if (mounted) setState(() {});
+    } else {
+      _currentUser = null;
+    }
   }
 
   Future<void> _loadCartCount() async {
     if (_isLoggedIn) {
       _cartItemCount = await CartService.getCartItemCount();
-      if (mounted) setState(() {});
+    } else {
+      _cartItemCount = await LocalCartService.getCartItemCount();
     }
+    if (mounted) setState(() {});
   }
 
   Future<void> _fetchProducts() async {
@@ -150,13 +143,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Check auth status first
       await _checkAuthStatus();
-      
+
       // Refresh all data concurrently if logged in
       List<Future> futures = [_refreshProducts(), _fetchProducts()];
       if (_isLoggedIn) {
         futures.addAll([_loadUser(), _loadCartCount()]);
       }
-      
+
       await Future.wait(futures);
 
       // Show success message
@@ -203,10 +196,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Add this method to refresh cart count when returning from other screens
-  void _refreshCartCount() {
-    if (_isLoggedIn) {
-      _loadCartCount();
-    }
+  void _refreshCartCount() async {
+    await _loadCartCount();
   }
 
   // Handle search functionality
@@ -275,12 +266,6 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // Only show the main content if logged in
-    // (though we redirect in _checkAuthStatus, this is a safety check)
-    if (!_isLoggedIn) {
-      return const SizedBox.shrink();
-    }
-
     return Scaffold(
       drawer: AppDrawer(products: _products),
       backgroundColor: Colors.grey.shade50,
@@ -294,9 +279,8 @@ class _HomeScreenState extends State<HomeScreen> {
         onLogout: () async {
           if (_isLoggedIn) {
             await AuthService.logout();
-            if (mounted) {
-              Navigator.pushReplacementNamed(context, '/login');
-            }
+            await _loadCartCount(); // refresh to guest cart count after logout
+            if (mounted) setState(() { _isLoggedIn = false; _currentUser = null; });
           }
         },
       ),
@@ -310,7 +294,6 @@ class _HomeScreenState extends State<HomeScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             children: [
-              // Add SearchWidget right after the header
               SearchWidget(
                 onSearch: _handleSearch,
                 hintText: 'Search For Product',
@@ -321,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ProductsSection(
                 key: _productsKey,
                 refreshCartCount: _refreshCartCount,
-                isGuestMode: false, // Always false since user must be logged in
+                isGuestMode: !_isLoggedIn, // allow guest cart
               ),
               const SizedBox(height: 24),
               const SizedBox(height: 50),

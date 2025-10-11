@@ -336,8 +336,6 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
-
-
   // Categories row helpers
   final List<String> _categories = const [
     'Savory',
@@ -419,7 +417,6 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-
   Future<void> _handleRefresh() async {
     await _checkLoginStatus(); // Re-check login status on refresh
     await fetchProducts();
@@ -436,10 +433,9 @@ class _SearchScreenState extends State<SearchScreen> {
         currentUser: _currentUser,
         isLoggedIn: _isLoggedIn,
         onCartTap: () async {
-          if (!_isLoggedIn) Navigator.pushNamed(context, '/login'); else {
-            await Navigator.pushNamed(context, '/cart');
-            _loadCartCount();
-          }
+          // No login required to open cart
+          await Navigator.pushNamed(context, '/cart');
+          _loadCartCount();
         },
         onProfileTap: () async {
           if (!_isLoggedIn) Navigator.pushNamed(context, '/login'); else Navigator.pushNamed(context, '/profile');
@@ -447,25 +443,26 @@ class _SearchScreenState extends State<SearchScreen> {
         onLogout: () async {
           await AuthService.logout();
           await _checkLoginStatus();
-          if (mounted) Navigator.pushReplacementNamed(context, '/login');
+          await _loadCartCount();
+          if (mounted) setState(() {});
         },
       ),
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
         color: Colors.red.shade400,
-         backgroundColor: Colors.grey.shade200,
+        backgroundColor: Colors.grey.shade200,
         strokeWidth: 2.5,
         child: CustomScrollView(
           slivers: [
             // Search box and controls as SliverToBoxAdapter
             SliverToBoxAdapter(
-  child: Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,  // ✅ Move color here
-      border: Border.all(color: Colors.grey[300]!, width: 1),
-      borderRadius: BorderRadius.circular(8),
-    ),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,  // ✅ Move color here
+                  border: Border.all(color: Colors.grey[300]!, width: 1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Column(
                   children: [
                     TextField(
@@ -511,7 +508,7 @@ class _SearchScreenState extends State<SearchScreen> {
             SliverToBoxAdapter(
               child: ProductsSection(
                 refreshCartCount: _loadCartCount,
-                isGuestMode: !_isLoggedIn,
+                isGuestMode: !_isLoggedIn, // Use guest mode and cart opens without login
                 smallAddButton: true,
                 crossAxisCount: 2,
                 filterCategory: selectedCategory,

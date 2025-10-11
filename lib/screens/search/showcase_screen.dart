@@ -8,8 +8,7 @@ import '/services/cart_service.dart';
 import '/widgets/header.dart';
 import '/services/auth_service.dart';
 import '/widgets/products.dart'; // Import the ProductsSection
-
-
+import '/services/local_cart_service.dart'; // Import LocalCartService for guest cart
 
 class ShowcaseScreen extends StatefulWidget {
   const ShowcaseScreen({Key? key}) : super(key: key);
@@ -159,20 +158,18 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
   }
 
   Future<void> _loadCartCount() async {
-    if (!_isAuthenticated) return;
-    
+    if (!_isAuthenticated) {
+      _cartItemCount = await LocalCartService.getCartItemCount(); // 
+      if (mounted) setState(() {});
+      return;
+    }
     try {
       _cartItemCount = await CartService.getCartItemCount();
       if (mounted) setState(() {});
     } catch (e) {
-      print('Error loading cart count: $e');
-      // If cart service fails due to auth, user might not be logged in
-      if (e.toString().contains('401') || e.toString().contains('unauthorized')) {
-        _isAuthenticated = false;
-        // Clear the token if it's invalid
-        await _clearAuthToken();
-        if (mounted) setState(() {});
-      }
+      // fallback to guest
+      _cartItemCount = await LocalCartService.getCartItemCount();
+      if (mounted) setState(() {});
     }
   }
 
@@ -184,24 +181,8 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
 
   // Handle cart navigation with auth check
   Future<void> _handleCartNavigation() async {
-    try {
-      // Re-check authentication before navigating
-      bool isLoggedIn = await _isUserAuthenticated();
-      
-      print('Cart navigation - Auth check: $isLoggedIn'); // Debug log
-      
-      if (!isLoggedIn) {
-        _showAuthRequiredDialog('cart');
-        return;
-      }
-
-      await Navigator.pushNamed(context, '/cart');
-      // Reload cart count after returning from cart screen
-      await _loadCartCount();
-    } catch (e) {
-      print('Error navigating to cart: $e');
-      _showAuthRequiredDialog('cart');
-    }
+    await Navigator.pushNamed(context, '/cart');
+    await _loadCartCount();
   }
 
   // Handle profile navigation with auth check
@@ -255,31 +236,17 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
   }
 
   Future<void> _addToCart() async {
-    if (product == null) {
-      print('Cannot add to cart - product is null');
-      return;
-    }
+    if (product == null) return;
 
-    // Check authentication before adding to cart
-    try {
-      bool isLoggedIn = await _isUserAuthenticated();
-      if (!isLoggedIn) {
-        _showAuthRequiredDialog('cart');
-        return;
-      }
-    } catch (e) {
-      print('Error checking auth for add to cart: $e');
-      _showAuthRequiredDialog('cart');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() { _isLoading = true; });
 
     try {
-      for (int i = 0; i < _quantity; i++) {
-        await CartService.addToCart(Map<String, dynamic>.from(product!));
+      if (_isAuthenticated) {
+        for (int i = 0; i < _quantity; i++) {
+          await CartService.addToCart(Map<String, dynamic>.from(product!));
+        }
+      } else {
+        await LocalCartService.addToCart(Map<String, dynamic>.from(product!), quantity: _quantity);
       }
 
       await _loadCartCount();
@@ -294,30 +261,17 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
         );
       }
     } catch (e) {
-      print('Error adding to cart: $e');
       if (mounted) {
-        String errorMessage = 'Error adding item to cart';
-        
-        // Check if it's an authentication error
-        if (e.toString().contains('401') || e.toString().contains('unauthorized')) {
-          errorMessage = 'Please log in to add items to cart';
-          _isAuthenticated = false;
-          await _clearAuthToken();
-          setState(() {});
-        }
-        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage),
+            content: Text('Error adding to cart'),
             backgroundColor: Colors.red.shade400,
             duration: const Duration(milliseconds: 1500),
           ),
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() { _isLoading = false; });
     }
   }
 
@@ -356,7 +310,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: Header(
-        cartItemCount: _isAuthenticated ? _cartItemCount : 0,
+        cartItemCount: _cartItemCount,
         isLoggedIn: _isAuthenticated,  
         onCartTap: _handleCartNavigation, // Use auth-aware navigation
         onProfileTap: _handleProfileNavigation, // Use auth-aware navigation
@@ -420,8 +374,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                   // Availability Status
                   _buildAvailabilitySection(),
                   const SizedBox(height: 20),
-
-                 
 
                   // Quantity Selector (only if available)
                   if (product!['isAvailable'] == true) ...[
@@ -1129,47 +1081,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
 
   Widget _buildBottomButton() {
     bool isAvailable = product!['isAvailable'] == true;
-    
-    if (!_isAuthenticated) {
-      // Show login prompt for unauthenticated users
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.shade500,
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton.icon(
-              onPressed: () => Navigator.pushNamed(context, '/login'),
-              icon: const Icon(Icons.login),
-              label: const Text(
-                'Login to Add to Cart',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade400,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
     
     return Container(
       padding: const EdgeInsets.all(20),

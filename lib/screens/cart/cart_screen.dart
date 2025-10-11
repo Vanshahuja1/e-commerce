@@ -3,6 +3,7 @@ import '/services/cart_service.dart';
 import '/widgets/header.dart';
 import '/models/user_model.dart';
 import '/services/auth_service.dart';
+import '/services/local_cart_service.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({Key? key}) : super(key: key);
@@ -24,13 +25,13 @@ class _CartScreenState extends State<CartScreen> {
     'finalTotal': 0.0,
   };
   bool _isProcessing = false;
+  bool _isLoggedIn = false; // 
   final TextEditingController _specialRequestsController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadUser();
-    _loadCart();
+    _init();
   }
 
   @override
@@ -39,8 +40,18 @@ class _CartScreenState extends State<CartScreen> {
     super.dispose();
   }
 
+  Future<void> _init() async {
+    _isLoggedIn = await AuthService.isLoggedIn();
+    await _loadUser();
+    await _loadCart();
+  }
+
   Future<void> _loadUser() async {
-    _currentUser = await AuthService.getCurrentUser();
+    if (_isLoggedIn) {
+      _currentUser = await AuthService.getCurrentUser();
+    } else {
+      _currentUser = null;
+    }
     if (mounted) setState(() {});
   }
 
@@ -50,17 +61,31 @@ class _CartScreenState extends State<CartScreen> {
     });
 
     try {
-      final items = await CartService.getCartItems();
-      final count = await CartService.getCartItemCount();
-      final summary = await CartService.getCartSummary();
+      if (_isLoggedIn) {
+        final items = await CartService.getCartItems();
+        final count = await CartService.getCartItemCount();
+        final summary = await CartService.getCartSummary();
 
-      if (mounted) {
-        setState(() {
-          cartItems = items;
-          _cartItemCount = count;
-          _cartSummary = summary;
-          isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            cartItems = List<Map<String, dynamic>>.from(items);
+            _cartItemCount = count;
+            _cartSummary = summary;
+            isLoading = false;
+          });
+        }
+      } else {
+        final items = await LocalCartService.getCartItems();
+        final count = await LocalCartService.getCartItemCount();
+        final summary = await LocalCartService.getCartSummary();
+        if (mounted) {
+          setState(() {
+            cartItems = items;
+            _cartItemCount = count;
+            _cartSummary = summary;
+            isLoading = false;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -84,15 +109,19 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     final item = cartItems[index];
-    final productId = item['_id'] ?? item['productId'];
+    final productId = (item['_id'] ?? item['productId']).toString();
 
     try {
       setState(() {
         _isProcessing = true;
       });
 
-      await CartService.updateQuantity(productId, newQuantity);
-      await _loadCart(); // Refresh cart after update
+      if (_isLoggedIn) {
+        await CartService.updateQuantity(productId, newQuantity);
+      } else {
+        await LocalCartService.updateQuantity(productId, newQuantity);
+      }
+      await _loadCart();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -113,17 +142,15 @@ class _CartScreenState extends State<CartScreen> {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+      if (mounted) setState(() {
+        _isProcessing = false;
+      });
     }
   }
 
   Future<void> _removeItem(int index) async {
     final item = cartItems[index];
-    final productId = item['_id'] ?? item['productId'];
+    final productId = (item['_id'] ?? item['productId']).toString();
     final productName = item['name'];
 
     try {
@@ -131,7 +158,11 @@ class _CartScreenState extends State<CartScreen> {
         _isProcessing = true;
       });
 
-      await CartService.removeFromCart(productId);
+      if (_isLoggedIn) {
+        await CartService.removeFromCart(productId);
+      } else {
+        await LocalCartService.removeFromCart(productId);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -142,7 +173,11 @@ class _CartScreenState extends State<CartScreen> {
               label: 'UNDO',
               textColor: Colors.white,
               onPressed: () async {
-                await CartService.addToCart(item);
+                if (_isLoggedIn) {
+                  await CartService.addToCart(item);
+                } else {
+                  await LocalCartService.addToCart(item);
+                }
                 await _loadCart();
               },
             ),
@@ -150,7 +185,7 @@ class _CartScreenState extends State<CartScreen> {
         );
       }
 
-      await _loadCart(); // Refresh cart after removal
+      await _loadCart();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -161,11 +196,9 @@ class _CartScreenState extends State<CartScreen> {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+      if (mounted) setState(() {
+        _isProcessing = false;
+      });
     }
   }
 
@@ -192,7 +225,11 @@ class _CartScreenState extends State<CartScreen> {
               });
 
               try {
-                await CartService.clearCart();
+                if (_isLoggedIn) {
+                  await CartService.clearCart();
+                } else {
+                  await LocalCartService.clearCart();
+                }
                 await _loadCart();
 
                 if (mounted) {
@@ -213,11 +250,9 @@ class _CartScreenState extends State<CartScreen> {
                   );
                 }
               } finally {
-                if (mounted) {
-                  setState(() {
-                    _isProcessing = false;
-                  });
-                }
+                if (mounted) setState(() {
+                  _isProcessing = false;
+                });
               }
             },
             style: ElevatedButton.styleFrom(
@@ -242,6 +277,34 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
+    if (!_isLoggedIn) {
+      await Navigator.pushNamed(context, '/login');
+      _isLoggedIn = await AuthService.isLoggedIn();
+      if (!_isLoggedIn) return;
+
+      try {
+        final localItems = await LocalCartService.getCartItems();
+        for (final it in localItems) {
+          final times = it['quantity'] as int? ?? 1;
+          for (int i = 0; i < times; i++) {
+            await CartService.addToCart(Map<String, dynamic>.from(it));
+          }
+        }
+        await LocalCartService.clearCart();
+        await _loadCart();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to sync cart after login. Please try again.'),
+              backgroundColor: Colors.red.shade400,
+            ),
+          );
+        }
+        return;
+      }
+    }
+
     Navigator.pushNamed(
       context,
       '/payment',
@@ -254,20 +317,15 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  // Helper method to calculate individual item price details
   Map<String, double> _calculateItemPrices(Map<String, dynamic> item) {
     final quantity = item['quantity'] as int? ?? 1;
     final originalPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
     final discount = (item['discount'] as num?)?.toDouble() ?? 0.0;
     final tax = (item['tax'] as num?)?.toDouble() ?? 0.0;
-    
-    // Step 1: Apply discount to original price
+
     final discountedPrice = originalPrice * (1 - discount / 100);
-    
-    // Step 2: Calculate tax on discounted price
     final finalPriceWithTax = discountedPrice * (1 + tax / 100);
-    
-    // Step 3: Calculate totals for this item
+
     final itemOriginalTotal = originalPrice * quantity;
     final itemDiscountedTotal = discountedPrice * quantity;
     final itemFinalTotal = finalPriceWithTax * quantity;
@@ -313,7 +371,7 @@ class _CartScreenState extends State<CartScreen> {
               "Kanwarji's",
               style: TextStyle(
                 color: Colors.grey,
-                fontSize: 12, // small grey text
+                fontSize: 12,
               ),
             ),
           ],
@@ -388,7 +446,6 @@ class _CartScreenState extends State<CartScreen> {
 
     return Column(
       children: [
-        // Cart header - simplified without summary
         Container(
           padding: const EdgeInsets.all(16),
           color: Colors.white,
@@ -420,7 +477,6 @@ class _CartScreenState extends State<CartScreen> {
             ],
           ),
         ),
-        // Cart items and special requests
         Expanded(
           child: RefreshIndicator(
             onRefresh: _loadCart,
@@ -430,7 +486,6 @@ class _CartScreenState extends State<CartScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Cart items list
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -487,15 +542,14 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _buildCartItem(Map<String, dynamic> item, int index) {
     final quantity = item['quantity'] as int? ?? 1;
-    
-    // Use the helper method to get calculated prices
+
     final prices = _calculateItemPrices(item);
     final originalPrice = prices['originalPrice']!;
     final discountedPrice = prices['discountedPrice']!;
     final finalPriceWithTax = prices['finalPriceWithTax']!;
     final itemFinalTotal = prices['itemFinalTotal']!;
     final itemSavings = prices['itemSavings']!;
-    
+
     final discount = (item['discount'] as num?)?.toDouble() ?? 0.0;
     final tax = (item['tax'] as num?)?.toDouble() ?? 0.0;
 
@@ -524,7 +578,6 @@ class _CartScreenState extends State<CartScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Product Image
               Container(
                 width: 80,
                 height: 80,
@@ -554,7 +607,6 @@ class _CartScreenState extends State<CartScreen> {
                       ),
               ),
               const SizedBox(width: 16),
-              // Product Details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -570,12 +622,9 @@ class _CartScreenState extends State<CartScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    
-                    // Price display with proper calculation
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Current price (after discount + tax)
                         Row(
                           children: [
                             Text(
@@ -599,8 +648,6 @@ class _CartScreenState extends State<CartScreen> {
                             ],
                           ],
                         ),
-                        
-                        // Discount and tax info
                         const SizedBox(height: 2),
                         Row(
                           children: [
@@ -642,12 +689,10 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                       ],
                     ),
-                    
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Quantity controls
                         Container(
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.grey.shade300),
@@ -655,7 +700,6 @@ class _CartScreenState extends State<CartScreen> {
                           ),
                           child: Row(
                             children: [
-                              // Decrease button
                               InkWell(
                                 onTap: _isProcessing ? null : () => _updateQuantity(index, quantity - 1),
                                 child: Container(
@@ -668,7 +712,6 @@ class _CartScreenState extends State<CartScreen> {
                                   ),
                                 ),
                               ),
-                              // Quantity display
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12),
                                 child: Text(
@@ -679,7 +722,6 @@ class _CartScreenState extends State<CartScreen> {
                                   ),
                                 ),
                               ),
-                              // Increase button
                               InkWell(
                                 onTap: _isProcessing ? null : () => _updateQuantity(index, quantity + 1),
                                 child: Container(
@@ -695,8 +737,6 @@ class _CartScreenState extends State<CartScreen> {
                             ],
                           ),
                         ),
-                        
-                        // Final item total with savings
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
@@ -731,7 +771,6 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  // Updated bottom section that includes both summary and checkout
   Widget _buildBottomSection() {
     return Container(
       decoration: BoxDecoration(
@@ -748,7 +787,6 @@ class _CartScreenState extends State<CartScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Cart Summary Section (moved from top)
             if (cartItems.isNotEmpty && _cartSummary['finalTotal']! > 0) ...[
               Container(
                 padding: const EdgeInsets.all(16),
@@ -860,8 +898,6 @@ class _CartScreenState extends State<CartScreen> {
                 ),
               ),
             ],
-            
-            // Checkout Bar Section
             Container(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -893,7 +929,6 @@ class _CartScreenState extends State<CartScreen> {
                   ],
                   Row(
                     children: [
-                      // Price details
                       Expanded(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -917,7 +952,6 @@ class _CartScreenState extends State<CartScreen> {
                           ],
                         ),
                       ),
-                      // Checkout button
                       ElevatedButton(
                         onPressed: _isProcessing || cartItems.isEmpty ? null : _checkout,
                         style: ElevatedButton.styleFrom(
