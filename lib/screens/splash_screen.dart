@@ -17,7 +17,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<OnboardingSlide> _slides = [
     OnboardingSlide(
       color: Color(0xFFFAE54A),
-      title: 'Welcome to\nkanwarji\'s',
+      title: 'Welcome to\nKanwarji',
       description: 'Buy Sweet and Savory Snacks & Namkeen Online',
       subtitle: 'Fresh, delicious, and delivered to your doorstep.',
       imagePath: 'assets/images/slider5.jpg',

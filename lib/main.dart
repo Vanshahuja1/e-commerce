@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'screens/splash_screen.dart';
+
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/auth/password.dart';
@@ -49,7 +49,7 @@ class GroceryApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Kanwarji\'s',
+      title: 'Kanwarji',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
       initialRoute: AppRoutes.home,
@@ -170,9 +170,7 @@ class GroceryApp extends StatelessWidget {
 
   Route<dynamic>? _generateRoute(RouteSettings settings) {
     switch (settings.name) {
-      case AppRoutes.splash:
-        return _createRoute(const OnboardingScreen());
-
+      
       case AppRoutes.login:
         return _createRoute(const LoginScreen());
 

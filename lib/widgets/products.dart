@@ -714,7 +714,7 @@ class ProductsSectionState extends State<ProductsSection> {
           bool localHasDiscount = localDiscount > 0;
           bool localHasVAT = product['hasVAT'] == true;
           return Stack(
-            children: [
+           children:[
               if (localHasDiscount)
                 Positioned(
                   top: 6,

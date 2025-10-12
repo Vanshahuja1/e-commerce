@@ -4,13 +4,17 @@ import 'dart:convert';
 import '/models/user_model.dart';
 import '/services/auth_service.dart';
 import '/services/cart_service.dart';
+import '/services/local_cart_service.dart';
 import '/widgets/header.dart';
 import '/widgets/app_drawer.dart';
 import '/widgets/search.dart';
-import '/services/local_cart_service.dart'; // Added import
 import '/widgets/category.dart';
 import '/widgets/products.dart';
 import '/widgets/footer.dart';
+import '/widgets/hero.dart';
+import '/widgets/best_selling_products.dart';
+import '/widgets/categories_showcase.dart';
+import '/widgets/trust_row.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -33,14 +37,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkAuthStatus() async {
-    _isLoggedIn = await AuthService.isLoggedIn();
+    try {
+      _isLoggedIn = await AuthService.isLoggedIn().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => false,
+      );
 
-    await _loadUser(); // only sets when logged in
-    await _loadCartCount();
-    await _fetchProducts();
-
-    if (mounted) {
-      setState(() => _isCheckingAuth = false);
+      await _loadUser();
+      await _loadCartCount();
+      await _fetchProducts();
+    } catch (e) {
+      print('Error in _checkAuthStatus: $e');
+      _isLoggedIn = false;
+      _currentUser = null;
+      _cartItemCount = 0;
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingAuth = false);
+      }
     }
   }
 
@@ -62,12 +76,16 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() {});
   }
 
+  // Add the missing _refreshCartCount method
+  Future<void> _refreshCartCount() async {
+    await _loadCartCount();
+  }
+
   Future<void> _fetchProducts() async {
     try {
-      List<dynamic> allProducts = [];
       int page = 1;
       int totalPages = 1;
-
+      List<dynamic> allProducts = [];
       do {
         final uri = Uri.parse(
             'https://e-com-backend-x67v.onrender.com/api/admin-items?page=' + page.toString());
@@ -77,7 +95,8 @@ class _HomeScreenState extends State<HomeScreen> {
         );
 
         if (response.statusCode != 200) {
-          return;
+          print('Failed to load products page $page: ${response.statusCode}');
+          break;
         }
 
         final data = json.decode(response.body);
@@ -106,119 +125,92 @@ class _HomeScreenState extends State<HomeScreen> {
         page++;
       } while (page <= totalPages);
 
-      setState(() {
-        _products = allProducts;
-      });
+      if (mounted) {
+        setState(() {
+          _products = allProducts;
+        });
+      }
     } catch (e) {
-      // Handle error
+      print('Error fetching products: $e');
+      if (mounted) {
+        setState(() {
+          _products = [];
+        });
+      }
     }
   }
 
   // Refresh method that will be called when user pulls to refresh
   Future<void> _onRefresh() async {
     try {
-      // Show loading indicator
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 16),
+                const Icon(Icons.refresh, color: Colors.white),
+                const SizedBox(width: 8),
                 const Text('Refreshing...'),
               ],
             ),
-            backgroundColor: Colors.red.shade400,
-            duration: const Duration(seconds: 1),
           ),
         );
       }
 
-      // Check auth status first
       await _checkAuthStatus();
 
-      // Refresh all data concurrently if logged in
-      List<Future> futures = [_refreshProducts(), _fetchProducts()];
+      List<Future> futures = [_fetchProducts()];
       if (_isLoggedIn) {
         futures.addAll([_loadUser(), _loadCartCount()]);
       }
 
       await Future.wait(futures);
 
-      // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 20),
-                const SizedBox(width: 16),
-                const Text('Refreshed successfully!'),
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                const Text('Refresh completed successfully'),
               ],
             ),
-            backgroundColor: Colors.red.shade400,
-            duration: const Duration(seconds: 2),
           ),
         );
       }
     } catch (e) {
-      // Show error message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                Icon(Icons.error_outline, color: Colors.white, size: 20),
-                const SizedBox(width: 16),
-                Text('Refresh failed: ${e.toString()}'),
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                const Text('Refresh failed. Please try again.'),
               ],
             ),
-            backgroundColor: Colors.red.shade400,
-            duration: const Duration(seconds: 3),
           ),
         );
       }
     }
   }
 
-  // Method to refresh products
-  Future<void> _refreshProducts() async {
-    if (_productsKey.currentState != null) {
-      await _productsKey.currentState!.refreshProducts();
-    }
-  }
-
-  // Add this method to refresh cart count when returning from other screens
-  void _refreshCartCount() async {
-    await _loadCartCount();
-  }
-
-  // Handle search functionality
-  void _handleSearch(String query) {
-    Navigator.pushNamed(
-      context,
-      '/search',
-      arguments: {'query': query},
-    );
+  // Add this method to scroll to top when home is tapped in footer
+  void _scrollToTop() {
+    // Find the ScrollController and scroll to top
+    // For now, we'll just trigger a refresh
+    _onRefresh();
   }
 
   void _handleCartNavigation() {
     Navigator.pushNamed(context, '/cart').then((_) {
-      // Refresh cart count when returning from cart
       _refreshCartCount();
     });
   }
 
   void _handleProfileNavigation() {
     Navigator.pushNamed(context, '/profile').then((_) {
-      // Refresh user data when returning from profile
       _loadUser();
     });
   }
@@ -228,18 +220,26 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleCategoriesNavigation() {
-    // Navigate to categories page or scroll to categories section
     Navigator.pushNamed(context, '/search');
   }
 
   void _handleDiscountNavigation() {
-    // Navigate to discount
     Navigator.pushNamed(context, '/discount');
+  }
+
+  Future<void> _handleLogout() async {
+    if (_isLoggedIn) {
+      await AuthService.logout();
+      await _loadCartCount();
+      if (mounted) setState(() {
+        _isLoggedIn = false;
+        _currentUser = null;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Show loading screen while checking authentication
     if (_isCheckingAuth) {
       return Scaffold(
         backgroundColor: Colors.white,
@@ -247,9 +247,8 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(
-                color: Colors.red.shade400,
-                strokeWidth: 3,
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
               ),
               const SizedBox(height: 16),
               Text(
@@ -257,7 +256,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey.shade600,
-                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -267,8 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Scaffold(
-      drawer: AppDrawer(products: _products),
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Colors.white,
       appBar: Header(
         cartItemCount: _cartItemCount,
         currentUser: _currentUser,
@@ -276,14 +273,10 @@ class _HomeScreenState extends State<HomeScreen> {
         onCartTap: _handleCartNavigation,
         onProfileTap: _handleProfileNavigation,
         onSearchTap: _handleSearchNavigation,
-        onLogout: () async {
-          if (_isLoggedIn) {
-            await AuthService.logout();
-            await _loadCartCount(); // refresh to guest cart count after logout
-            if (mounted) setState(() { _isLoggedIn = false; _currentUser = null; });
-          }
-        },
+        onLogout: _handleLogout,
+        showSidebarIcon: true,
       ),
+      drawer: AppDrawer(products: _products),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
         color: Colors.red.shade400,
@@ -294,20 +287,36 @@ class _HomeScreenState extends State<HomeScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             children: [
-              SearchWidget(
-                onSearch: _handleSearch,
-                hintText: 'Search For Product',
-              ),
-              const SizedBox(height: 2),
-              const CategorySection(),
-              const SizedBox(height: 8),
-              ProductsSection(
-                key: _productsKey,
+              // Hero Carousel - 4 sliding images
+              const HeroCarousel(),
+
+              const SizedBox(height: 16),
+
+              // Best Selling Products Section
+              BestSellingProductsSection(
                 refreshCartCount: _refreshCartCount,
-                isGuestMode: !_isLoggedIn, // allow guest cart
+                isGuestMode: !_isLoggedIn,
               ),
-              const SizedBox(height: 24),
-              const SizedBox(height: 50),
+
+              const SizedBox(height: 16),
+
+              // Categories Showcase - 6 categories with 4 products each
+              CategoriesShowcase(
+                refreshCartCount: _refreshCartCount,
+                isGuestMode: !_isLoggedIn,
+              ),
+
+              const SizedBox(height: 16),
+
+              // Trust/Credibility Section
+              const TrustRow(),
+
+              const SizedBox(height: 16),
+
+              // About Us Section
+              _buildAboutUsSection(),
+
+              const SizedBox(height: 100),
             ],
           ),
         ),
@@ -315,11 +324,44 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: Footer(
         currentUser: _currentUser,
         isLoggedIn: _isLoggedIn,
-        currentIndex: 0,
-        onHomeTap: () {},
+        onHomeTap: () {
+          // Already on home screen, just scroll to top
+          _scrollToTop();
+        },
         onCategoriesTap: _handleCategoriesNavigation,
         onDiscountTap: _handleDiscountNavigation,
         onProfileTap: _handleProfileNavigation,
+        currentIndex: 0, // Home is active
+      ),
+    );
+  }
+
+  Widget _buildAboutUsSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'About Kanwarji',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Kanwarji is your trusted partner for authentic, handcrafted food products. We bring you the finest quality traditional snacks and sweets made with love and the purest ingredients. Our commitment to quality, freshness, and customer satisfaction has made us a beloved name across India.',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade600,
+              height: 1.6,
+            ),
+          ),
+          
+        ],
       ),
     );
   }
