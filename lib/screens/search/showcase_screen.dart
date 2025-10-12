@@ -2,13 +2,13 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart'; // Add this import
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import '/services/cart_service.dart';
 import '/widgets/header.dart';
 import '/services/auth_service.dart';
-import '/widgets/products.dart'; // Import the ProductsSection
-import '/services/local_cart_service.dart'; // Import LocalCartService for guest cart
+import '/widgets/products.dart';
+import '/services/local_cart_service.dart';
 
 class ShowcaseScreen extends StatefulWidget {
   const ShowcaseScreen({Key? key}) : super(key: key);
@@ -23,18 +23,21 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
   int _quantity = 1;
   bool _isLoading = false;
   bool _argumentsProcessed = false;
-  bool _isAuthenticated = false; // Add authentication state
+  bool _isAuthenticated = false;
+  
   // Media carousel state
   final PageController _pageController = PageController();
   int _currentPage = 0;
   VideoPlayerController? _videoController;
   Future<void>? _initializeVideoFuture;
   Timer? _autoPageTimer;
+  
   // Expansion states for accordions
   bool _expProductDetails = false;
   bool _expShipping = false;
   bool _expHelp = false;
   bool _expFaq = false;
+  
   // Sub-expansion states for FAQs
   bool _faqReturn = false;
   bool _faqMade = false;
@@ -45,37 +48,18 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     _checkAuthenticationAndLoadData();
   }
 
-  // Get auth token from SharedPreferences
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('auth_token');
   }
 
-  // Check if user is authenticated by verifying token exists and is valid
   Future<bool> _isUserAuthenticated() async {
     try {
       final token = await _getToken();
       if (token == null || token.isEmpty) {
         return false;
       }
-      
-      // Optional: Verify token with server (recommended)
-      // You can add a simple API call here to validate the token
-      // For now, just check if token exists
       return true;
-      
-      // Uncomment below if you want to verify token with server
-      /*
-      final response = await http.get(
-        Uri.parse('YOUR_API_BASE_URL/verify-token'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-      
-      return response.statusCode == 200;
-      */
     } catch (e) {
       print('Error checking authentication: $e');
       return false;
@@ -90,13 +74,10 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     super.dispose();
   }
 
-  // Check authentication and load initial data
   Future<void> _checkAuthenticationAndLoadData() async {
     try {
-      // Check if user is authenticated using token
       _isAuthenticated = await _isUserAuthenticated();
-      
-      print('Authentication status: $_isAuthenticated'); // Debug log
+      print('Authentication status: $_isAuthenticated');
       
       if (_isAuthenticated) {
         await _loadCartCount();
@@ -121,11 +102,9 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     if (!_argumentsProcessed) {
       final args = ModalRoute.of(context)?.settings.arguments;
       print('ShowcaseScreen - Received args: $args');
-      print('ShowcaseScreen - Args type: ${args.runtimeType}');
       
       if (args != null) {
         try {
-          // Ensure we have a proper Map<String, dynamic>
           Map<String, dynamic> productData;
           if (args is Map<String, dynamic>) {
             productData = args;
@@ -140,26 +119,23 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
             product = productData;
             _argumentsProcessed = true;
           });
-          // Reset media to first page when product changes
+          
           _currentPage = 0;
           _disposeVideo();
           _startAutoSlide();
           
           print('ShowcaseScreen - Product set successfully');
-          print('ShowcaseScreen - Product name: ${product?['name']}');
        
         } catch (e) {
           print('ShowcaseScreen - Error processing arguments: $e');
         }
-      } else {
-        print('ShowcaseScreen - No arguments received');
       }
     }
   }
 
   Future<void> _loadCartCount() async {
     if (!_isAuthenticated) {
-      _cartItemCount = await LocalCartService.getCartItemCount(); // 
+      _cartItemCount = await LocalCartService.getCartItemCount();
       if (mounted) setState(() {});
       return;
     }
@@ -167,31 +143,24 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
       _cartItemCount = await CartService.getCartItemCount();
       if (mounted) setState(() {});
     } catch (e) {
-      // fallback to guest
       _cartItemCount = await LocalCartService.getCartItemCount();
       if (mounted) setState(() {});
     }
   }
 
-  // Clear auth token
   Future<void> _clearAuthToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
   }
 
-  // Handle cart navigation with auth check
   Future<void> _handleCartNavigation() async {
     await Navigator.pushNamed(context, '/cart');
     await _loadCartCount();
   }
 
-  // Handle profile navigation with auth check
   Future<void> _handleProfileNavigation() async {
     try {
-      // Re-check authentication before navigating
       bool isLoggedIn = await _isUserAuthenticated();
-      
-      print('Profile navigation - Auth check: $isLoggedIn'); // Debug log
       
       if (!isLoggedIn) {
         _showAuthRequiredDialog('profile');
@@ -205,7 +174,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     }
   }
 
-  // Show dialog when authentication is required
   void _showAuthRequiredDialog(String feature) {
     showDialog(
       context: context,
@@ -275,11 +243,10 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     }
   }
 
-  // Handle logout with proper navigation
   Future<void> _handleLogout() async {
     try {
       await AuthService.logout();
-      await _clearAuthToken(); // Ensure token is cleared
+      await _clearAuthToken();
       _isAuthenticated = false;
       _cartItemCount = 0;
       
@@ -289,7 +256,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
       }
     } catch (e) {
       print('Error during logout: $e');
-      // Force logout even if there's an error
       await _clearAuthToken();
       _isAuthenticated = false;
       _cartItemCount = 0;
@@ -303,18 +269,30 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print('ShowcaseScreen - Build called, product: ${product != null ? "exists" : "null"}');
-    print('ShowcaseScreen - Auth status: $_isAuthenticated'); // Debug log
-   
+    if (product == null) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Colors.red.shade400,
+          ),
+        ),
+      );
+    }
+
+    bool isAvailable = product!['isAvailable'] == true;
+    if (product!['isAvailable'] == null) {
+      isAvailable = true;
+    }
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: Header(
         cartItemCount: _cartItemCount,
         isLoggedIn: _isAuthenticated,  
-        onCartTap: _handleCartNavigation, // Use auth-aware navigation
-        onProfileTap: _handleProfileNavigation, // Use auth-aware navigation
-        onLogout: _handleLogout, // Use proper logout handler
+        onCartTap: _handleCartNavigation,
+        onProfileTap: _handleProfileNavigation,
+        onLogout: _handleLogout,
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -370,30 +348,23 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                   // Price Section
                   _buildPriceSection(),
                   const SizedBox(height: 16),
-
+                  
                   // Availability Status
                   _buildAvailabilitySection(),
                   const SizedBox(height: 20),
 
                   // Quantity Selector (only if available)
-                  if (product!['isAvailable'] == true) ...[
+                  if (isAvailable) ...[
                     _buildQuantitySelector(),
                     const SizedBox(height: 16),
                     // Info Accordions (after quantity)
                     _buildInfoAccordions(),
                     const SizedBox(height: 16),
-                   
                   ],
                 ],
               ),
             ),
-            
-            // Divider before related products
-            Container(
-              height: 8,
-              color: Colors.grey.shade100,
-            ),
-            
+                  
             // Related Products Section
             Container(
               padding: const EdgeInsets.all(16),
@@ -434,10 +405,10 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
             // Products Section Widget
             ProductsSection(
               refreshCartCount: _loadCartCount,
-              isGuestMode: !_isAuthenticated, // Pass authentication state
+              isGuestMode: !_isAuthenticated,
             ),
             
-            const SizedBox(height: 100), // Space for bottom navigation bar
+            const SizedBox(height: 100),
           ],
         ),
       ),
@@ -445,30 +416,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
       // Bottom Add to Cart Button
       bottomNavigationBar: _buildBottomButton(),
     );
-  }
-
-  Widget _buildProductImage() {
-    if (product!['imageUrl'] != null && product!['imageUrl'].toString().isNotEmpty) {
-      return Image.network(
-        product!['imageUrl'].toString(),
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildPlaceholderImage();
-        },
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                  : null,
-            ),
-          );
-        },
-      );
-    } else {
-      return _buildPlaceholderImage();
-    }
   }
 
   Widget _buildPlaceholderImage() {
@@ -552,15 +499,11 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     );
   }
 
-  // =====================
-  // Media Carousel (Images + Video)
-  // =====================
   List<Map<String, String>> _getMediaItems() {
     final List<Map<String, String>> items = [];
     final p = product;
     if (p == null) return items;
 
-    // Images array (new schema)
     final imgs = p['images'];
     if (imgs is List) {
       for (final it in imgs) {
@@ -571,7 +514,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
       }
     }
 
-    // Fallback/compat: imageUrls array (legacy schema used by some flows)
     if (items.isEmpty) {
       final imgUrls = p['imageUrls'];
       if (imgUrls is List) {
@@ -584,7 +526,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
       }
     }
 
-    // Fallback to legacy single imageUrl if images were empty
     if (items.isEmpty) {
       final single = p['imageUrl']?.toString();
       if (single != null && single.isNotEmpty) {
@@ -592,19 +533,15 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
       }
     }
 
-    // Optional video
     final video = p['videoUrl']?.toString();
     if (video != null && video.isNotEmpty) {
       items.add({'type': 'video', 'url': video});
     }
 
-    // Debug: log how many media items were resolved
-    try {
-      print('Showcase media items count: ${items.length}');
-      if (items.isNotEmpty) {
-        print('First media item type: ${items.first['type']} url: ${items.first['url']}');
-      }
-    } catch (_) {}
+    print('Showcase media items count: ${items.length}');
+    if (items.isNotEmpty) {
+      print('First media item type: ${items.first['type']} url: ${items.first['url']}');
+    }
 
     return items;
   }
@@ -621,14 +558,12 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
   void _startAutoSlide() {
     _stopAutoSlide();
     final media = _getMediaItems();
-    if (media.length <= 1) return; // nothing to slide
-    // If current is video, do not auto-slide
+    if (media.length <= 1) return;
     if (media[_currentPage]['type'] == 'video') return;
     _autoPageTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!mounted) return;
       final m = _getMediaItems();
       if (m.isEmpty) return;
-      // Skip auto-slide when on video
       if (m[_currentPage]['type'] == 'video') return;
       final next = (_currentPage + 1) % m.length;
       _pageController.animateToPage(
@@ -659,7 +594,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     final media = _getMediaItems();
     if (media.isEmpty) return _buildPlaceholderImage();
 
-    // Prepare video if landing on a video page initially
     if (media[_currentPage]['type'] == 'video' && _videoController == null) {
       _initVideo(media[_currentPage]['url']!);
     }
@@ -787,6 +721,10 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
 
   Widget _buildAvailabilitySection() {
     bool isAvailable = product!['isAvailable'] == true;
+    if (product!['isAvailable'] == null) {
+      isAvailable = true;
+    }
+
     return Row(
       children: [
         Icon(
@@ -799,22 +737,14 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
           isAvailable ? 'In Stock' : 'Out of Stock',
           style: TextStyle(
             fontSize: 14,
-            color: isAvailable ? Colors.green.shade400 : Colors.green.shade400,
+            color: isAvailable ? Colors.green.shade400 : Colors.red.shade400,
             fontWeight: FontWeight.w600,
-          ),
-        ),
-        Text(
-          ' /${product!['unit']?.toString() ?? 'unit'}',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey.shade600,
           ),
         ),
       ],
     );
   }
  
-  // Helper divider used in accordions
   Widget _buildThinDivider() {
     return Container(
       height: 1,
@@ -823,7 +753,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     );
   }
 
-  // Accordions block shown after quantity selector (with dummy text)
   Widget _buildInfoAccordions() {
     TextStyle headerStyle = TextStyle(
       fontSize: 16,
@@ -889,7 +818,7 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: Text(
-                  'Shipping It takes 2-3 days for deliveries in Bangalore, whereas it takes 6-8 days for Nation and worldwide deliveries. Returns We do not accept returns. Refunds are provided in certain cases. Please email us at info@kanwarjis.in with relevant information and images for assistance.',
+                  'Shipping: It takes 2-3 days for deliveries in Bangalore, whereas it takes 6-8 days for Nation and worldwide deliveries. Returns: We do not accept returns. Refunds are provided in certain cases. Please email us at info@kanwarjis.in with relevant information and images for assistance.',
                   style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
                 ),
               ),
@@ -946,7 +875,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
             }),
             childrenPadding: const EdgeInsets.only(left: 0, right: 0, bottom: 12),
             children: [
-              // Subcategory: Return/Refund Policy
               Theme(
                 data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
@@ -975,7 +903,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
                 ),
               ),
               _buildThinDivider(),
-              // Subcategory: How are products made
               Theme(
                 data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
@@ -1010,7 +937,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
       ],
     );
   }
-
 
   Widget _buildQuantitySelector() {
     int maxQuantity = int.tryParse(product!['quantity']?.toString() ?? '1') ?? 1;
@@ -1078,12 +1004,14 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     );
   }
 
-
   Widget _buildBottomButton() {
     bool isAvailable = product!['isAvailable'] == true;
-    
+    if (product!['isAvailable'] == null) {
+      isAvailable = true;
+    }
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -1149,88 +1077,11 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(String dateString) {
-    try {
-      DateTime date = DateTime.parse(dateString);
-      return '${date.day}/${date.month}/${date.year}';
-    } catch (e) {
-      return dateString;
-    }
-  }
-
-  // Helper methods for price calculations
   String _calculateDiscountedPrice(double price, double discount) {
     double discountedPrice = price * (1 - discount / 100);
     return discountedPrice.toStringAsFixed(3);
   }
 
-  String _calculateSubtotal() {
-    double price = double.tryParse(product!['price']?.toString() ?? '0') ?? 0;
-    return (price * _quantity).toStringAsFixed(3);
-  }
-
-  String _calculateDiscountAmount() {
-    double price = double.tryParse(product!['price']?.toString() ?? '0') ?? 0;
-    double discount = double.tryParse(product!['discount']?.toString() ?? '0') ?? 0;
-    double discountAmount = (price * _quantity) * (discount / 100);
-    return discountAmount.toStringAsFixed(3);
-  }
-
-  String _calculateTaxAmount() {
-    double price = double.tryParse(product!['price']?.toString() ?? '0') ?? 0;
-    double discount = double.tryParse(product!['discount']?.toString() ?? '0') ?? 0;
-    double tax = double.tryParse(product!['tax']?.toString() ?? '0') ?? 0;
-
-    // Calculate price after discount
-    double discountedPrice = price * (1 - discount / 100);
-    double taxAmount = (discountedPrice * _quantity) * (tax / 100);
-    return taxAmount.toStringAsFixed(3);
-  }
-
-  String _calculateTotalPrice() {
-    double price = double.tryParse(product!['price']?.toString() ?? '0') ?? 0;
-    double discount = double.tryParse(product!['discount']?.toString() ?? '0') ?? 0;
-    double tax = double.tryParse(product!['tax']?.toString() ?? '0') ?? 0;
-
-    // Calculate price after discount
-    double discountedPrice = price * (1 - discount / 100);
-    // Add tax to discounted price
-    double finalPrice = discountedPrice * (1 + tax / 100);
-    return (finalPrice * _quantity).toStringAsFixed(3);
-  }
-
-  // Dynamic product description getter with multiple key fallbacks
   String _getProductDetailsText() {
     final p = product;
     if (p == null) return 'No details available';
@@ -1253,7 +1104,6 @@ class _ShowcaseScreenState extends State<ShowcaseScreen> {
       }
     }
 
-    // Construct a minimal fallback using other known fields
     final name = p['name']?.toString();
     final cat = p['category']?.toString();
     final unit = p['unit']?.toString();

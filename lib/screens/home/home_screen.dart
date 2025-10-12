@@ -298,7 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 isGuestMode: !_isLoggedIn,
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
 
               // Categories Showcase - 6 categories with 4 products each
               CategoriesShowcase(

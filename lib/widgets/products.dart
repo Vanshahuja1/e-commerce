@@ -491,7 +491,13 @@ class ProductsSectionState extends State<ProductsSection> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        _buildAddButton(product, quantity, screenWidth),
+                        Container(
+                          constraints: BoxConstraints(
+                            maxWidth: screenWidth > 600 ? 40 : 45,
+                            maxHeight: screenWidth > 600 ? 24 : 28,
+                          ),
+                          child: _buildAddButton(product, quantity, screenWidth),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 1),

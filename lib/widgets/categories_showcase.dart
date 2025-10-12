@@ -148,7 +148,7 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
               color: Colors.grey.shade800,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           if (isLoading)
             const Center(
               child: CircularProgressIndicator(),
@@ -250,7 +250,7 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
         Navigator.pushNamed(
           context,
           '/showcase',
-          arguments: {'product': product},
+          arguments: product,
         );
       },
       child: Container(

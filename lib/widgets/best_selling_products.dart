@@ -199,7 +199,7 @@ class _BestSellingProductsSectionState extends State<BestSellingProductsSection>
         Navigator.pushNamed(
           context,
           '/showcase',
-          arguments: {'product': product},
+          arguments: product,
         );
       },
       child: Container(
