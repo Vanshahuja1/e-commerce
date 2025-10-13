@@ -37,7 +37,7 @@ class _BestSellingProductsSectionState extends State<BestSellingProductsSection>
       });
 
       final response = await http.get(
-        Uri.parse('https://e-com-backend-x67v.onrender.com/api/admin-items?isBestSelling=true'),
+        Uri.parse('https://e-com-backend-x67v.onrender.com/api/admin-items?isSpecialItem=true'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -58,8 +58,8 @@ class _BestSellingProductsSectionState extends State<BestSellingProductsSection>
         // Filter products to ensure only best-selling ones are shown
         // This is a safety measure in case the backend filtering isn't working properly
         final filteredProducts = products.where((product) {
-          final isBestSelling = product['isBestSelling'];
-          return isBestSelling == true;
+          final isSpecialItem = product['isSpecialItem'];
+          return isSpecialItem == true;
         }).toList();
 
         print('DEBUG: Total products received: ${products.length}');
