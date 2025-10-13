@@ -53,7 +53,7 @@ class _HeroCarouselState extends State<HeroCarousel> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 200,
+      height: 280,
       child: Stack(
         children: [
           PageView.builder(

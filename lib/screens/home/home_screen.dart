@@ -287,6 +287,11 @@ class _HomeScreenState extends State<HomeScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             children: [
+              // Search Widget with scrolling banner (moved to top)
+              const SearchWidget(),
+
+              const SizedBox(height: 16),
+
               // Hero Carousel - 4 sliding images
               const HeroCarousel(),
 
@@ -353,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Kanwarji is your trusted partner for authentic, handcrafted food products. We bring you the finest quality traditional snacks and sweets made with love and the purest ingredients. Our commitment to quality, freshness, and customer satisfaction has made us a beloved name across India.',
+            'Kanwarji is your trusted partner for authentic, handcrafted food products that celebrate the rich taste of Indian tradition. We bring you the finest quality snacks and sweets, lovingly prepared using time-honored recipes and the purest ingredients. Every bite reflects our passion for excellence, freshness, and genuine flavor. With decades of dedication to quality and customer satisfaction, Kanwarji has become a beloved name across India — a symbol of trust, taste, and tradition that continues to delight families everywhere.',
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey.shade600,

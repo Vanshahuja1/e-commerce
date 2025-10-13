@@ -23,8 +23,8 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
   Map<String, List<dynamic>> categoryProducts = {};
   bool isLoading = true;
   String? error;
+  Map<String, int> cartQuantities = {}; // Added cart quantities tracking
 
-  // Fixed categories list
   final List<String> categories = [
     'Savory',
     'Namkeen',
@@ -38,6 +38,30 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
   void initState() {
     super.initState();
     _fetchProductsAndOrganize();
+    _loadCartQuantities(); // Load cart quantities on init
+  }
+
+  // Added method to load cart quantities
+  Future<void> _loadCartQuantities() async {
+    try {
+      final cartItems = widget.isGuestMode
+          ? await LocalCartService.getCartItems()
+          : await CartService.getCartItems();
+      
+      if (mounted) {
+        setState(() {
+          cartQuantities.clear();
+          for (var item in cartItems) {
+            final id = item['_id']?.toString() ?? item['productId']?.toString() ?? item['id']?.toString() ?? '';
+            if (id.isNotEmpty) {
+              cartQuantities[id] = item['quantity'] ?? 1;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      print('Error loading cart quantities: $e');
+    }
   }
 
   Future<void> _fetchProductsAndOrganize() async {
@@ -66,14 +90,15 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
           products = [data];
         }
 
-        // Organize products by category
         Map<String, List<dynamic>> categorized = {};
         for (String category in categories) {
           List<dynamic> categoryItems = products.where((product) {
-            String productCategory = product['category']?.toString().toLowerCase() ?? '';
-            return productCategory.contains(category.toLowerCase()) ||
-                   category.toLowerCase().contains(productCategory);
-          }).take(4).toList();
+            String productCategory = product['category']?.toString().toLowerCase().trim() ?? '';
+            String targetCategory = category.toLowerCase().trim();
+            // Exact match or category contains the target
+            return productCategory == targetCategory || 
+                   productCategory.split(',').any((cat) => cat.trim() == targetCategory);
+          }).take(3).toList();
 
           if (categoryItems.isNotEmpty) {
             categorized[category] = categoryItems;
@@ -107,6 +132,8 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
         await CartService.addToCart(Map<String, dynamic>.from(product));
       }
 
+      await _loadCartQuantities(); // Reload quantities after adding
+
       if (widget.refreshCartCount != null) {
         widget.refreshCartCount!();
       }
@@ -115,8 +142,8 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${product['name']} added to cart'),
-            backgroundColor: Colors.red.shade400,
-            duration: const Duration(milliseconds: 800),
+            backgroundColor: Colors.green.shade400,
+            duration: const Duration(milliseconds: 600),
           ),
         );
       }
@@ -125,6 +152,54 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error adding to cart: $e'),
+            backgroundColor: Colors.red.shade400,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeFromCart(dynamic product) async {
+    try {
+      final productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
+      int currentQuantity = cartQuantities[productId] ?? 0;
+      
+      if (currentQuantity <= 0) return;
+
+      if (widget.isGuestMode) {
+        if (currentQuantity == 1) {
+          await LocalCartService.removeFromCart(productId);
+        } else {
+          await LocalCartService.updateQuantity(productId, currentQuantity - 1);
+        }
+      } else {
+        if (currentQuantity == 1) {
+          await CartService.removeFromCart(productId);
+        } else {
+          await CartService.updateQuantity(productId, currentQuantity - 1);
+        }
+      }
+
+      await _loadCartQuantities(); // Reload quantities after removing
+
+      if (widget.refreshCartCount != null) {
+        widget.refreshCartCount!();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product['name']} ${currentQuantity == 1 ? 'removed from' : 'quantity decreased in'} cart'),
+            backgroundColor: Colors.orange.shade600,
+            duration: const Duration(milliseconds: 600),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error removing from cart: $e'),
             backgroundColor: Colors.red.shade400,
           ),
         );
@@ -240,13 +315,16 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
   }
 
   Widget _buildProductCard(dynamic product) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
+    final quantity = cartQuantities[productId] ?? 0; // Get actual quantity from cart
+    
     double originalPrice = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
     double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0.0;
     double discountedPrice = originalPrice * (1 - discount / 100);
 
     return GestureDetector(
       onTap: () {
-        // Navigate to showcase screen with product details
         Navigator.pushNamed(
           context,
           '/showcase',
@@ -254,7 +332,7 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
         );
       },
       child: Container(
-        width: 140,
+        width: 160,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -271,115 +349,207 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image section - fixed height
-            Container(
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
-                ),
-              ),
-              child: product['imageUrl'] != null
-                  ? ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        topRight: Radius.circular(12),
-                      ),
-                      child: Image.network(
-                        product['imageUrl'],
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: double.infinity,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey.shade200,
-                            child: const Icon(Icons.image, color: Colors.grey),
-                          );
-                        },
-                      ),
-                    )
-                  : Container(
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.image, color: Colors.grey),
-                    ),
-            ),
-            // Content section - flexible but with minimum spacing
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    product['name'] ?? 'Unknown Product',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      height: 1.2,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+            Expanded(
+              flex: 3,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
                   ),
-                  const SizedBox(height: 6),
-                  if (discount > 0) ...[
-                    Text(
-                      '₹${originalPrice.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: Colors.grey.shade500,
-                        decoration: TextDecoration.lineThrough,
-                        height: 1.2,
+                ),
+                child: product['imageUrl'] != null
+                    ? ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(12),
+                          topRight: Radius.circular(12),
+                        ),
+                        child: Image.network(
+                          product['imageUrl'],
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey.shade200,
+                              child: const Icon(Icons.image, color: Colors.grey),
+                            );
+                          },
+                        ),
+                      )
+                    : Container(
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.image, color: Colors.grey),
                       ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product['name'] ?? 'Unknown Product',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        _buildAddButton(product, quantity, screenWidth),
+                      ],
+                    ),
+                    Text(
+                      '${product['quantity']} ${product['unit']}',
+                      style: TextStyle(
+                        fontSize: screenWidth > 700 ? 9 : 8,
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.normal,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      '₹${discountedPrice.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        height: 1.2,
-                      ),
-                    ),
-                  ] else
-                    Text(
-                      '₹${originalPrice.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        height: 1.2,
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 28,
-                    child: ElevatedButton(
-                      onPressed: () => _addToCart(product),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade400,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                    if (discount > 0) ...[
+                      Text(
+                        '₹${originalPrice.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: Colors.grey.shade500,
+                          decoration: TextDecoration.lineThrough,
                         ),
                       ),
-                      child: const Text(
-                        'Add to Cart',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-                        textAlign: TextAlign.center,
+                      Text(
+                        '₹${discountedPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
                       ),
-                    ),
-                  ),
-                ],
+                    ] else
+                      Text(
+                        '₹${originalPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildAddButton(dynamic product, int quantity, double screenWidth) {
+    double buttonSize = screenWidth > 600 ? 24 : 20;
+    double iconSize = screenWidth > 600 ? 14 : 12;
+    double fontSize = screenWidth > 600 ? 12 : 10;
+    double rowPadding = screenWidth > 600 ? 5 : 3;
+
+    if (quantity == 0) {
+      return GestureDetector(
+        onTap: () => _addToCart(product),
+        child: Container(
+          width: buttonSize,
+          height: buttonSize,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.shade300,
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.add,
+            size: iconSize,
+            color: Colors.red,
+          ),
+        ),
+      );
+    } else {
+      return Container(
+        height: buttonSize,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(13),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade500,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () => _removeFromCart(product),
+              child: Container(
+                width: buttonSize,
+                height: buttonSize,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.remove,
+                  color: Colors.white,
+                  size: iconSize,
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: rowPadding),
+              child: Text(
+                quantity.toString(),
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: () => _addToCart(product),
+              child: Container(
+                width: buttonSize,
+                height: buttonSize,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.add,
+                  color: Colors.white,
+                  size: iconSize,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
   }
 }

@@ -11,12 +11,14 @@ class ProductsSection extends StatefulWidget {
   final int crossAxisCount;
   final String? filterCategory;
   final String? filterQuery;
+  final double? addButtonIconSize;
 
   const ProductsSection({
     Key? key,
     this.refreshCartCount,
     this.isGuestMode = false,
     this.smallAddButton = true,
+  this.addButtonIconSize,
     this.crossAxisCount = 2,
     this.filterCategory,
     this.filterQuery,
@@ -492,10 +494,10 @@ class ProductsSectionState extends State<ProductsSection> {
                         ),
                         const SizedBox(width: 4),
                         Container(
-                          constraints: BoxConstraints(
-                            maxWidth: screenWidth > 600 ? 40 : 45,
-                            maxHeight: screenWidth > 600 ? 24 : 28,
-                          ),
+         constraints: BoxConstraints(
+  maxWidth: screenWidth > 600 ? 22 : 24,
+  maxHeight: screenWidth > 600 ? 14 : 16,
+),
                           child: _buildAddButton(product, quantity, screenWidth),
                         ),
                       ],
@@ -555,11 +557,10 @@ class ProductsSectionState extends State<ProductsSection> {
   }
 
   Widget _buildAddButton(dynamic product, int quantity, double screenWidth) {
-    final useSmall = widget.smallAddButton;
-    double buttonSize = useSmall ? (screenWidth > 600 ? 24 : 28) : (screenWidth > 600 ? 28 : 36);
-    double iconSize = useSmall ? (screenWidth > 600 ? 12 : 14) : (screenWidth > 600 ? 14 : 18);
-    double fontSize = useSmall ? (screenWidth > 600 ? 11 : 12) : (screenWidth > 600 ? 12 : 14);
-    double rowPadding = screenWidth > 600 ? 6 : 8;
+    double buttonSize = screenWidth > 600 ? 18 : 16;
+    double iconSize = screenWidth > 600 ? 10 : 9;
+    double fontSize = screenWidth > 600 ? 9 : 8;
+    double rowPadding = screenWidth > 600 ? 2 : 1;
 
     if (quantity == 0) {
       return GestureDetector(
@@ -572,9 +573,9 @@ class ProductsSectionState extends State<ProductsSection> {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.shade500,
-                blurRadius: 3,
-                offset: const Offset(0, 1),
+                color: Colors.grey.shade300,
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -585,71 +586,72 @@ class ProductsSectionState extends State<ProductsSection> {
           ),
         ),
       );
+    } else {
+      return Container(
+        height: buttonSize,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade500,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () => removeItemFromCart(product),
+              child: Container(
+                width: buttonSize,
+                height: buttonSize,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.remove,
+                  color: Colors.white,
+                  size: iconSize,
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: rowPadding),
+              child: Text(
+                quantity.toString(),
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: () => addItemToCart(product),
+              child: Container(
+                width: buttonSize,
+                height: buttonSize,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.add,
+                  color: Colors.white,
+                  size: iconSize,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
     }
-
-    return Container(
-      height: buttonSize,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade500,
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GestureDetector(
-            onTap: () => removeItemFromCart(product),
-            child: Container(
-              width: buttonSize,
-              height: buttonSize,
-              decoration: const BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.remove,
-                color: Colors.white,
-                size: iconSize,
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: rowPadding),
-            child: Text(
-              quantity.toString(),
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: () => addItemToCart(product),
-            child: Container(
-              width: buttonSize,
-              height: buttonSize,
-              decoration: const BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.add,
-                color: Colors.white,
-                size: iconSize,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
+
 
   Widget _buildPlaceholderImage() {
     return Container(

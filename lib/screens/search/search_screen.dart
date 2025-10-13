@@ -81,7 +81,7 @@ class _SearchScreenState extends State<SearchScreen> {
           SnackBar(
             content: Text('${product['name']} added to cart'),
             backgroundColor: Colors.red.shade400,
-            duration: const Duration(milliseconds: 800),
+            duration: const Duration(milliseconds: 600),
           ),
         );
       }
@@ -91,7 +91,7 @@ class _SearchScreenState extends State<SearchScreen> {
           SnackBar(
             content: Text('Error adding item to cart: $e'),
             backgroundColor: Colors.red.shade400,
-            duration: const Duration(milliseconds: 800),
+            duration: const Duration(milliseconds: 600),
           ),
         );
       }
@@ -476,6 +476,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear),
+                                iconSize: 10,
                                 onPressed: () {
                                   _searchController.clear();
                                   setState(() {
@@ -511,6 +512,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 isGuestMode: !_isLoggedIn, // Use guest mode and cart opens without login
                 smallAddButton: true,
                 crossAxisCount: 2,
+                addButtonIconSize: 10,
                 filterCategory: selectedCategory,
                 filterQuery: _searchController.text.trim(),
               ),

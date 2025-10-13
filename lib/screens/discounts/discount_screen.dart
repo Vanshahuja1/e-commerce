@@ -153,7 +153,7 @@ class DiscountScreenState extends State<DiscountScreen> {
           SnackBar(
             content: Text('${product['name']} added to cart'),
             backgroundColor: Colors.red.shade400,
-            duration: const Duration(milliseconds: 800),
+            duration: const Duration(milliseconds: 600),
           ),
         );
       }
@@ -170,7 +170,7 @@ class DiscountScreenState extends State<DiscountScreen> {
           SnackBar(
             content: Text('${product['name']} added to cart'),
             backgroundColor: Colors.red.shade400,
-            duration: const Duration(milliseconds: 800),
+            duration: const Duration(milliseconds: 600),
           ),
         );
       }
@@ -281,7 +281,7 @@ class DiscountScreenState extends State<DiscountScreen> {
   }
 
   Future<void> _handleCategoriesTap() async {
-    Navigator.pushNamed(context, '/categories');
+    Navigator.pushNamed(context, '/search');
   }
 
   Future<void> _handleDiscountTap() async {
@@ -650,9 +650,9 @@ class DiscountScreenState extends State<DiscountScreen> {
   }
 
   Widget _buildAddButton(dynamic product, int quantity, double screenWidth) {
-    double buttonSize = screenWidth > 600 ? 22 : 18;
-    double iconSize = screenWidth > 600 ? 13 : 11;
-    double fontSize = screenWidth > 600 ? 11 : 9;
+    double buttonSize = screenWidth > 600 ? 24 : 20;
+    double iconSize = screenWidth > 600 ? 14 : 12;
+    double fontSize = screenWidth > 600 ? 12 : 10;
     double rowPadding = screenWidth > 600 ? 5 : 3;
 
     if (quantity == 0) {

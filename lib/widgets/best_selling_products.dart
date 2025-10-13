@@ -22,11 +22,35 @@ class _BestSellingProductsSectionState extends State<BestSellingProductsSection>
   List<dynamic> bestSellingProducts = [];
   bool isLoading = true;
   String? error;
+  Map<String, int> cartQuantities = {};
 
   @override
   void initState() {
     super.initState();
     _fetchBestSellingProducts();
+    _loadCartQuantities();
+  }
+
+  Future<void> _loadCartQuantities() async {
+    try {
+      final cartItems = widget.isGuestMode
+          ? await LocalCartService.getCartItems()
+          : await CartService.getCartItems();
+      
+      if (mounted) {
+        setState(() {
+          cartQuantities.clear();
+          for (var item in cartItems) {
+            final id = item['_id']?.toString() ?? item['productId']?.toString() ?? item['id']?.toString() ?? '';
+            if (id.isNotEmpty) {
+              cartQuantities[id] = item['quantity'] ?? 1;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      print('Error loading cart quantities: $e');
+    }
   }
 
   Future<void> _fetchBestSellingProducts() async {
@@ -55,17 +79,11 @@ class _BestSellingProductsSectionState extends State<BestSellingProductsSection>
           products = [data];
         }
 
-        // Filter products to ensure only best-selling ones are shown
-        // This is a safety measure in case the backend filtering isn't working properly
         final filteredProducts = products.where((product) {
           final isSpecialItem = product['isSpecialItem'];
           return isSpecialItem == true;
         }).toList();
 
-        print('DEBUG: Total products received: ${products.length}');
-        print('DEBUG: Best-selling products after filtering: ${filteredProducts.length}');
-
-        // Limit to 8 products for the best selling section
         setState(() {
           bestSellingProducts = filteredProducts.take(8).toList();
           isLoading = false;
@@ -78,7 +96,6 @@ class _BestSellingProductsSectionState extends State<BestSellingProductsSection>
       }
     } catch (e) {
       setState(() {
-        error = 'Network error: $e';
         isLoading = false;
       });
     }
@@ -92,6 +109,8 @@ class _BestSellingProductsSectionState extends State<BestSellingProductsSection>
         await CartService.addToCart(Map<String, dynamic>.from(product));
       }
 
+      await _loadCartQuantities();
+
       if (widget.refreshCartCount != null) {
         widget.refreshCartCount!();
       }
@@ -100,8 +119,8 @@ class _BestSellingProductsSectionState extends State<BestSellingProductsSection>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${product['name']} added to cart'),
-            backgroundColor: Colors.red.shade400,
-            duration: const Duration(milliseconds: 800),
+            backgroundColor: Colors.green.shade400,
+            duration: const Duration(milliseconds: 600),
           ),
         );
       }
@@ -110,6 +129,54 @@ class _BestSellingProductsSectionState extends State<BestSellingProductsSection>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error adding to cart: $e'),
+            backgroundColor: Colors.red.shade400,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeFromCart(dynamic product) async {
+    try {
+      final productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
+      int currentQuantity = cartQuantities[productId] ?? 0;
+      
+      if (currentQuantity <= 0) return;
+
+      if (widget.isGuestMode) {
+        if (currentQuantity == 1) {
+          await LocalCartService.removeFromCart(productId);
+        } else {
+          await LocalCartService.updateQuantity(productId, currentQuantity - 1);
+        }
+      } else {
+        if (currentQuantity == 1) {
+          await CartService.removeFromCart(productId);
+        } else {
+          await CartService.updateQuantity(productId, currentQuantity - 1);
+        }
+      }
+
+      await _loadCartQuantities();
+
+      if (widget.refreshCartCount != null) {
+        widget.refreshCartCount!();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product['name']} ${currentQuantity == 1 ? 'removed from' : 'quantity decreased in'} cart'),
+            backgroundColor: Colors.orange.shade600,
+            duration: const Duration(milliseconds: 600),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error removing from cart: $e'),
             backgroundColor: Colors.red.shade400,
           ),
         );
@@ -174,7 +241,7 @@ class _BestSellingProductsSectionState extends State<BestSellingProductsSection>
             )
           else
             SizedBox(
-              height: 220,
+              height: 240,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: bestSellingProducts.length,
@@ -189,13 +256,16 @@ class _BestSellingProductsSectionState extends State<BestSellingProductsSection>
   }
 
   Widget _buildProductCard(dynamic product) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
+    final quantity = cartQuantities[productId] ?? 0;
+    
     double originalPrice = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
     double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0.0;
     double discountedPrice = originalPrice * (1 - discount / 100);
 
     return GestureDetector(
       onTap: () {
-        // Navigate to showcase screen with product details
         Navigator.pushNamed(
           context,
           '/showcase',
@@ -261,64 +331,63 @@ class _BestSellingProductsSectionState extends State<BestSellingProductsSection>
                 padding: const EdgeInsets.all(8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product['name'] ?? 'Unknown Product',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        _buildAddButton(product, quantity, screenWidth),
+                      ],
+                    ),
                     Text(
-                      product['name'] ?? 'Unknown Product',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                      '${product['quantity']} ${product['unit']}',
+                      style: TextStyle(
+                        fontSize: screenWidth > 700 ? 9 : 8,
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.normal,
                       ),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     if (discount > 0) ...[
                       Text(
-                        '₹${originalPrice.toStringAsFixed(3)}',
+                        '₹${originalPrice.toStringAsFixed(2)}',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 9,
                           color: Colors.grey.shade500,
                           decoration: TextDecoration.lineThrough,
                         ),
                       ),
                       Text(
-                        '₹${discountedPrice.toStringAsFixed(3)}',
+                        '₹${discountedPrice.toStringAsFixed(2)}',
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
                         ),
                       ),
                     ] else
                       Text(
-                        '₹${originalPrice.toStringAsFixed(3)}',
+                        '₹${originalPrice.toStringAsFixed(2)}',
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
                         ),
                       ),
-                    const Spacer(),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => _addToCart(product),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade400,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                          minimumSize: const Size(0, 32),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                        child: const Text(
-                          'Add to Cart',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -327,5 +396,101 @@ class _BestSellingProductsSectionState extends State<BestSellingProductsSection>
         ),
       ),
     );
+  }
+
+  Widget _buildAddButton(dynamic product, int quantity, double screenWidth) {
+    double buttonSize = screenWidth > 600 ? 24 : 20;
+    double iconSize = screenWidth > 600 ? 14 : 12;
+    double fontSize = screenWidth > 600 ? 12 : 10;
+    double rowPadding = screenWidth > 600 ? 5 : 3;
+
+    if (quantity == 0) {
+      return GestureDetector(
+        onTap: () => _addToCart(product),
+        child: Container(
+          width: buttonSize,
+          height: buttonSize,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.shade300,
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.add,
+            size: iconSize,
+            color: Colors.red,
+          ),
+        ),
+      );
+    } else {
+      return Container(
+        height: buttonSize,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(13),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade500,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () => _removeFromCart(product),
+              child: Container(
+                width: buttonSize,
+                height: buttonSize,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.remove,
+                  color: Colors.white,
+                  size: iconSize,
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: rowPadding),
+              child: Text(
+                quantity.toString(),
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: () => _addToCart(product),
+              child: Container(
+                width: buttonSize,
+                height: buttonSize,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.add,
+                  color: Colors.white,
+                  size: iconSize,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
   }
 }
