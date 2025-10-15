@@ -23,12 +23,12 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
   Map<String, List<dynamic>> categoryProducts = {};
   bool isLoading = true;
   String? error;
-  Map<String, int> cartQuantities = {}; // Added cart quantities tracking
+  Map<String, int> cartQuantities = {};
 
   final List<String> categories = [
     'Savory',
     'Namkeen',
-    'Sweet',
+    'Sweets',
     'Travel Pack Combo',
     'Value Pack Offers',
     'Gift Packs',
@@ -38,10 +38,9 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
   void initState() {
     super.initState();
     _fetchProductsAndOrganize();
-    _loadCartQuantities(); // Load cart quantities on init
+    _loadCartQuantities();
   }
 
-  // Added method to load cart quantities
   Future<void> _loadCartQuantities() async {
     try {
       final cartItems = widget.isGuestMode
@@ -95,10 +94,9 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
           List<dynamic> categoryItems = products.where((product) {
             String productCategory = product['category']?.toString().toLowerCase().trim() ?? '';
             String targetCategory = category.toLowerCase().trim();
-            // Exact match or category contains the target
             return productCategory == targetCategory || 
                    productCategory.split(',').any((cat) => cat.trim() == targetCategory);
-          }).take(3).toList();
+          }).take(6).toList();
 
           if (categoryItems.isNotEmpty) {
             categorized[category] = categoryItems;
@@ -132,7 +130,7 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
         await CartService.addToCart(Map<String, dynamic>.from(product));
       }
 
-      await _loadCartQuantities(); // Reload quantities after adding
+      await _loadCartQuantities();
 
       if (widget.refreshCartCount != null) {
         widget.refreshCartCount!();
@@ -180,7 +178,7 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
         }
       }
 
-      await _loadCartQuantities(); // Reload quantities after removing
+      await _loadCartQuantities();
 
       if (widget.refreshCartCount != null) {
         widget.refreshCartCount!();
@@ -218,9 +216,9 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
           Text(
             'Shop by Category',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade800,
+              color: Colors.grey.shade900,
             ),
           ),
           const SizedBox(height: 8),
@@ -277,7 +275,7 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade800,
+                  color: Colors.grey.shade900,
                 ),
               ),
               TextButton(
@@ -291,8 +289,8 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
                 child: Text(
                   'Explore More',
                   style: TextStyle(
-                    color: Colors.red.shade400,
-                    fontWeight: FontWeight.w600,
+                    color: Colors.red.shade600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -300,10 +298,11 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 240,
+            height: 250,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: products.length,
+              physics: const BouncingScrollPhysics(),
               itemBuilder: (context, index) {
                 return _buildProductCard(products[index]);
               },
@@ -317,11 +316,13 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
   Widget _buildProductCard(dynamic product) {
     final screenWidth = MediaQuery.of(context).size.width;
     final productId = product['_id']?.toString() ?? product['id']?.toString() ?? '';
-    final quantity = cartQuantities[productId] ?? 0; // Get actual quantity from cart
+    final quantity = cartQuantities[productId] ?? 0;
     
     double originalPrice = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
     double discount = double.tryParse(product['discount']?.toString() ?? '0') ?? 0.0;
     double discountedPrice = originalPrice * (1 - discount / 100);
+
+    double cardWidth = screenWidth > 600 ? 180 : 150;
 
     return GestureDetector(
       onTap: () {
@@ -332,7 +333,7 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
         );
       },
       child: Container(
-        width: 160,
+        width: cardWidth,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -474,7 +475,7 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.shade300,
+                color: Colors.grey.shade400,
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -483,7 +484,7 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
           child: Icon(
             Icons.add,
             size: iconSize,
-            color: Colors.red,
+            color: Colors.red.shade800,
           ),
         ),
       );
@@ -509,8 +510,8 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
               child: Container(
                 width: buttonSize,
                 height: buttonSize,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade800,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -536,8 +537,8 @@ class _CategoriesShowcaseState extends State<CategoriesShowcase> {
               child: Container(
                 width: buttonSize,
                 height: buttonSize,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade800,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

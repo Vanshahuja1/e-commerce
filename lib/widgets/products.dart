@@ -18,7 +18,7 @@ class ProductsSection extends StatefulWidget {
     this.refreshCartCount,
     this.isGuestMode = false,
     this.smallAddButton = true,
-  this.addButtonIconSize,
+    this.addButtonIconSize,
     this.crossAxisCount = 2,
     this.filterCategory,
     this.filterQuery,
@@ -493,13 +493,7 @@ class ProductsSectionState extends State<ProductsSection> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        Container(
-         constraints: BoxConstraints(
-  maxWidth: screenWidth > 600 ? 22 : 24,
-  maxHeight: screenWidth > 600 ? 14 : 16,
-),
-                          child: _buildAddButton(product, quantity, screenWidth),
-                        ),
+                        _buildAddButton(product, quantity, screenWidth),
                       ],
                     ),
                     const SizedBox(height: 1),
@@ -557,10 +551,10 @@ class ProductsSectionState extends State<ProductsSection> {
   }
 
   Widget _buildAddButton(dynamic product, int quantity, double screenWidth) {
-    double buttonSize = screenWidth > 600 ? 18 : 16;
-    double iconSize = screenWidth > 600 ? 10 : 9;
-    double fontSize = screenWidth > 600 ? 9 : 8;
-    double rowPadding = screenWidth > 600 ? 2 : 1;
+    double buttonSize = screenWidth > 600 ? 24 : 20;
+    double iconSize = screenWidth > 600 ? 14 : 12;
+    double fontSize = screenWidth > 600 ? 12 : 10;
+    double rowPadding = screenWidth > 600 ? 5 : 3;
 
     if (quantity == 0) {
       return GestureDetector(
@@ -591,7 +585,7 @@ class ProductsSectionState extends State<ProductsSection> {
         height: buttonSize,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(13), // same as DiscountScreen
           boxShadow: [
             BoxShadow(
               color: Colors.grey.shade500,
@@ -722,7 +716,7 @@ class ProductsSectionState extends State<ProductsSection> {
           bool localHasDiscount = localDiscount > 0;
           bool localHasVAT = product['hasVAT'] == true;
           return Stack(
-           children:[
+           children:[ 
               if (localHasDiscount)
                 Positioned(
                   top: 6,

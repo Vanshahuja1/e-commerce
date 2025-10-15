@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/auth/password.dart';
 import 'screens/home/home_screen.dart';
 
 import 'screens/admin/admin_dashboard.dart';
-import 'utils/app_colors.dart';
-import 'utils/app_routes.dart';
-import 'services/auth_service.dart';
-
 import 'screens/cart/cart_screen.dart';
 import 'screens/search/search_screen.dart';
 import 'screens/profile/profile.dart';
 import 'screens/payment.dart';
 import 'screens/search/showcase_screen.dart';
 import 'screens/order_success.dart';
-
+import 'screens/contact_us.dart';
 import 'screens/discounts/discount_screen.dart';
+
+import 'utils/app_colors.dart';
+import 'utils/app_routes.dart';
+import 'services/auth_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -170,25 +169,20 @@ class GroceryApp extends StatelessWidget {
 
   Route<dynamic>? _generateRoute(RouteSettings settings) {
     switch (settings.name) {
-      
       case AppRoutes.login:
         return _createRoute(const LoginScreen());
 
       case AppRoutes.signup:
-        return _createRoute(const SignupScreen());  
+        return _createRoute(const SignupScreen());
 
       case AppRoutes.home:
         return _createRoute(const HomeScreen());
-      
 
       case AppRoutes.discount:
-        return _createRoute(const DiscountScreen(),settings: settings);
-     
+        return _createRoute(const DiscountScreen(), settings: settings);
 
       case AppRoutes.adminDashbaord:
         return _createRoute(const AdminDashboard());
-
-      
 
       case AppRoutes.cart:
         return _createRoute(const CartScreen());
@@ -196,7 +190,7 @@ class GroceryApp extends StatelessWidget {
       case AppRoutes.search:
         return _createRoute(const SearchScreen(), settings: settings);
 
-   case AppRoutes.profile:
+      case AppRoutes.profile:
         return _createRoute(const ProfilePage());
 
       case AppRoutes.resetPassword:
@@ -210,6 +204,9 @@ class GroceryApp extends StatelessWidget {
 
       case AppRoutes.orderSuccess:
         return _createRoute(const OrderSuccessScreen(), settings: settings);
+
+      case AppRoutes.contactUs:
+        return _createRoute(const ContactUsPage());
 
       default:
         return _createRoute(

@@ -15,6 +15,7 @@ class AppRoutes {
   static const String categories = '/categories';
   static const String cart = '/cart';
   static const String profile = '/profile';
+  static const String contactUs = '/contact-us';
 
   // Product Routes
   static const String productDetails = '/product-details';

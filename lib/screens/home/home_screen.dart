@@ -353,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade800,
+              color: Colors.red.shade800,
             ),
           ),
           const SizedBox(height: 12),
@@ -361,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
             'Kanwarji is your trusted partner for authentic, handcrafted food products that celebrate the rich taste of Indian tradition. We bring you the finest quality snacks and sweets, lovingly prepared using time-honored recipes and the purest ingredients. Every bite reflects our passion for excellence, freshness, and genuine flavor. With decades of dedication to quality and customer satisfaction, Kanwarji has become a beloved name across India — a symbol of trust, taste, and tradition that continues to delight families everywhere.',
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey.shade600,
+              color: Colors.grey.shade700,
               height: 1.6,
             ),
           ),

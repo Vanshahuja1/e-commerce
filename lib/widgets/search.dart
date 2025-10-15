@@ -71,7 +71,7 @@ class _SearchWidgetState extends State<SearchWidget> {
 
     return Container(
       height: 20,
-      color: Colors.red.shade400,
+      color: Colors.red.shade600,
       child: ClipRect(
         child: IgnorePointer(
           ignoring: true, // Make banner non-interactive/non-scrollable by user

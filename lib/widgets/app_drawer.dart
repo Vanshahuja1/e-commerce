@@ -13,16 +13,19 @@ class AppDrawer extends StatelessWidget {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
+            // Header
             Container(
-              height: 70, // Much smaller than default DrawerHeader height
+              height: 70,
               decoration: BoxDecoration(color: Colors.red.shade400),
               alignment: Alignment.centerLeft,
               padding: const EdgeInsets.only(left: 16),
-              child: Text(
+              child: const Text(
                 'Menu',
                 style: TextStyle(color: Colors.white, fontSize: 24),
               ),
             ),
+            
+            // Categories (dynamic from products)
             ..._getCategories().map((category) {
               final categoryProducts = products.where((p) {
                 final cat = p['category']?.toString().toLowerCase() ?? '';
@@ -30,10 +33,12 @@ class AppDrawer extends StatelessWidget {
               }).take(3).toList();
 
               return ExpansionTile(
-                title: Text(category, style: TextStyle(fontWeight: FontWeight.bold)),
+                title: Text(category, style: const TextStyle(fontWeight: FontWeight.bold)),
                 children: [
                   if (categoryProducts.isEmpty)
-                    ListTile(title: Text('No products', style: TextStyle(color: Colors.grey))),
+                    const ListTile(
+                      title: Text('No products', style: TextStyle(color: Colors.grey)),
+                    ),
                   ...categoryProducts.map((product) {
                     return ListTile(
                       leading: SizedBox(
@@ -41,12 +46,12 @@ class AppDrawer extends StatelessWidget {
                         height: 40,
                         child: product['imageUrl'] != null && product['imageUrl'].toString().isNotEmpty
                             ? Image.network(product['imageUrl'].toString(), fit: BoxFit.cover)
-                            : Icon(Icons.image, color: Colors.grey),
+                            : const Icon(Icons.image, color: Colors.grey),
                       ),
                       title: Text(product['name']?.toString() ?? 'Unknown'),
                       subtitle: Text('₹${product['price']?.toString() ?? ''}'),
                       onTap: () {
-                        Navigator.pop(context); // Close drawer
+                        Navigator.pop(context);
                         Navigator.pushNamed(context, '/showcase', arguments: product);
                       },
                     );
@@ -54,13 +59,35 @@ class AppDrawer extends StatelessWidget {
                   ListTile(
                     title: Text('View All $category', style: TextStyle(color: Colors.red.shade400)),
                     onTap: () {
-                      Navigator.pop(context); // Close drawer
+                      Navigator.pop(context);
                       Navigator.pushNamed(context, '/search', arguments: {'category': category});
                     },
                   ),
                 ],
               );
             }),
+            
+            // Contact Us footer
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.grey.shade300)),
+              ),
+              child: ListTile(
+                leading: Icon(Icons.contact_support, color: Colors.red.shade400),
+                title: Text(
+                  'Contact Us',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red.shade400,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/contact-us');
+                },
+              ),
+            ),
           ],
         ),
       ),
@@ -68,7 +95,6 @@ class AppDrawer extends StatelessWidget {
   }
 
   List<String> _getCategories() {
-    // Instead of hardcoded categories, generate from actual product data
     final Set<String> uniqueCategories = {};
 
     for (var product in products) {
@@ -78,7 +104,6 @@ class AppDrawer extends StatelessWidget {
       }
     }
 
-    // If no categories found in data, fallback to default categories
     if (uniqueCategories.isEmpty) {
       return const [
         'Savory',
